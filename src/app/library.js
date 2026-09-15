@@ -1,7 +1,3 @@
-// The SafeTube Video Library — the single source of every child feed.
-// Videos are imported from the Default Trusted Channel Registry by the
-// admin/parent-controlled refresh process and then play purely from local
-// storage: child sessions make zero YouTube discovery or resolution calls.
 import { ALL_AGE_GROUPS, ENTERTAINMENT_CATEGORY } from "@/domain/constants";
 import { applyWhitelistGates } from "@/domain/gates";
 import { whitelistForAge } from "@/data/whitelist";
@@ -20,11 +16,17 @@ import { resolveChannels, fetchChannelUploads, YoutubeApiError } from "@/adapter
 
 const META_KEY = "library:meta";
 const SCANNED_KEY = "library:scanned";
-const IDS_KEY = "channelIds"; // permanent channel-name → channelId map
-const IMPORT_BATCH = 8; // channels per first-run import batch (bounds quota use)
-const REFRESH_CHANNELS = 8; // channels scanned per library refresh
-const HEAL_PER_REFRESH = 2; // unresolved channels retried per refresh
+const IDS_KEY = "channelIds";
+const FIRST_PAINT_CHANNELS = 2;
+const BACKGROUND_BATCH = 1;
+const REFRESH_NEW_CHANNELS = 2;
+const UPLOADS_PER_CHANNEL = 5;
+const PAUSE_MS = 2000;
 const AUTO_REFRESH_MS = 24 * 60 * 60 * 1000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const scanKey = (channel) => `${channel.name}:${channel.ageGroup || ""}`;
 
 export async function defaultTrustedChannels() {
   const seen = new Set();
@@ -78,18 +80,42 @@ async function resolveMissing(names) {
   const map = (await getCached(IDS_KEY)) ?? {};
   const missing = names.filter((n) => !map[n]);
   if (!missing.length) return map;
-  for (let i = 0; i < missing.length; i += 10) {
-    const resolved = await resolveChannels(missing.slice(i, i + 10));
+  for (const name of missing) {
+    const resolved = await resolveChannels([name]);
     resolved.forEach((r) => {
       if (r.channelId) map[r.query] = r.channelId;
     });
+    await putCached(IDS_KEY, map);
+    await sleep(PAUSE_MS);
   }
-  await putCached(IDS_KEY, map);
   return map;
 }
 
+async function alreadyHasVideos(channel) {
+  const rows = await libraryVideosForAge(channel.ageGroup);
+  return rows.some(
+    (v) =>
+      v.sourceChannelId === channel.channelId ||
+      (channel.name && (v.channelTitle || "").toLowerCase() === channel.name.toLowerCase())
+  );
+}
+
 async function scanChannel(channel, channelId) {
-  const uploads = await fetchChannelUploads(channelId, 10);
+  if (await alreadyHasVideos({ ...channel, channelId })) {
+    await putLibraryChannel({
+      channelId,
+      name: channel.name,
+      ageGroup: channel.ageGroup,
+      categories: channel.categories?.length ? channel.categories : [ENTERTAINMENT_CATEGORY],
+      language: channel.nativeLanguage || "en",
+      isDefaultTrusted: !!channel.isDefaultTrusted,
+      active: true,
+      reviewedAt: new Date().toISOString(),
+      source: channel.source || "registry",
+    });
+    return 0;
+  }
+  const uploads = await fetchChannelUploads(channelId, UPLOADS_PER_CHANNEL);
   const gated = applyWhitelistGates(uploads, channel.ageGroup);
   const now = new Date().toISOString();
   const categories = channel.categories?.length ? channel.categories : [ENTERTAINMENT_CATEGORY];
@@ -129,26 +155,25 @@ async function scanChannel(channel, channelId) {
 
 async function importBatch(batch) {
   let failureCode = null;
-  let idMap = {};
-  try {
-    idMap = await resolveMissing(batch.map((c) => c.name));
-  } catch (error) {
-    if (error instanceof YoutubeApiError) failureCode = error.code;
-  }
   let added = 0;
   const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
   for (const channel of batch) {
-    const channelId = channel.channelId || idMap[channel.name];
-    if (!channelId) continue;
     try {
+      const idMap = await resolveMissing([channel.name]);
+      const channelId = channel.channelId || idMap[channel.name];
+      if (!channelId) continue;
       const n = await scanChannel(channel, channelId);
       added += n;
-      if (n > 0) scanned.add(`${channel.name}:${channel.ageGroup || ""}`);
+      scanned.add(scanKey(channel));
+      await putCached(SCANNED_KEY, [...scanned]);
     } catch (error) {
       if (error instanceof YoutubeApiError && !failureCode) failureCode = error.code;
+      if (error instanceof YoutubeApiError && (error.code === "YOUTUBE_QUOTA_OR_KEY" || error.code === "MISSING_API_KEY")) {
+        break;
+      }
     }
+    await sleep(PAUSE_MS);
   }
-  await putCached(SCANNED_KEY, [...scanned]);
   return { added, failureCode };
 }
 
@@ -159,9 +184,9 @@ function continueImportInBackground(sources) {
   backgroundImport = (async () => {
     for (;;) {
       const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
-      const remaining = sources.filter((s) => !scanned.has(`${s.name}:${s.ageGroup || ""}`));
+      const remaining = sources.filter((s) => !scanned.has(scanKey(s)));
       if (!remaining.length) break;
-      const { failureCode } = await importBatch(remaining.slice(0, IMPORT_BATCH));
+      const { failureCode } = await importBatch(remaining.slice(0, BACKGROUND_BATCH));
       if (failureCode) break;
     }
   })()
@@ -175,14 +200,14 @@ export async function ensureLibraryVideos(profile) {
   const existing = await libraryVideosForAge(profile.ageGroup);
   const sources = await allSources(profile.ageGroup);
   const sameAge = sources.filter((s) => s.ageGroup === profile.ageGroup);
+  const pool = sameAge.length ? sameAge : sources;
   if (existing.length > 0) {
-    continueImportInBackground(sameAge.length ? sameAge : sources);
+    continueImportInBackground(pool);
     return { ok: true, added: 0 };
   }
   const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
-  const pool = sameAge.length ? sameAge : sources;
-  const unscanned = pool.filter((s) => !scanned.has(`${s.name}:${s.ageGroup || ""}`));
-  const targets = (unscanned.length ? unscanned : pool).slice(0, IMPORT_BATCH);
+  const unscanned = pool.filter((s) => !scanned.has(scanKey(s)));
+  const targets = (unscanned.length ? unscanned : pool).slice(0, FIRST_PAINT_CHANNELS);
   if (!targets.length) return { ok: true, added: 0 };
   const { added, failureCode } = await importBatch(targets);
   continueImportInBackground(pool);
@@ -223,62 +248,20 @@ export async function refreshLibrary({ manual = false } = {}) {
     return { skipped: true, added: 0, quotaIssue: false };
   }
 
-  const resolved = (await listLibraryChannels())
-    .filter((c) => c.active !== false)
-    .map((c) => ({
-      name: c.name,
-      channelId: c.channelId,
-      ageGroup: c.ageGroup,
-      categories: c.categories,
-      nativeLanguage: c.language,
-      isDefaultTrusted: c.isDefaultTrusted,
-      source: c.source,
-    }));
-
-  const knownIds = (await getCached(IDS_KEY)) ?? {};
-  const heal = (await defaultTrustedChannels())
-    .filter((c) => !resolved.some((r) => r.name === c.name) && !knownIds[c.name])
-    .slice(0, HEAL_PER_REFRESH);
-
-  const extras = (await parentChannels()).filter((c) => !resolved.some((r) => r.name === c.name));
-
-  const rotating =
-    resolved.length > 0
-      ? Array.from({ length: Math.min(REFRESH_CHANNELS, resolved.length) }, (_, i) => {
-          const offset = (Math.floor(now / 86400000) * REFRESH_CHANNELS + i) % resolved.length;
-          return resolved[offset];
-        })
-      : [];
-
-  const emptyAgeSources = [];
   const trusted = await defaultTrustedChannels();
+  const targets = [];
   for (const group of ALL_AGE_GROUPS) {
     const have = await libraryVideosForAge(group);
     if (have.length > 0) continue;
-    emptyAgeSources.push(...trusted.filter((s) => s.ageGroup === group).slice(0, IMPORT_BATCH));
+    targets.push(...trusted.filter((s) => s.ageGroup === group).slice(0, REFRESH_NEW_CHANNELS));
   }
-
-  const targets = [...emptyAgeSources, ...heal, ...extras, ...rotating].filter(
-    (channel, index, all) => all.findIndex((c) => c.name === channel.name && c.ageGroup === channel.ageGroup) === index
-  );
 
   let added = 0;
   let quotaIssue = false;
-  for (const channel of targets) {
-    try {
-      const idMap = await resolveMissing([channel.name]);
-      const channelId = channel.channelId || idMap[channel.name];
-      if (!channelId) continue;
-      added += await scanChannel(channel, channelId);
-    } catch (error) {
-      if (error instanceof YoutubeApiError) {
-        if (error.code === "YOUTUBE_QUOTA_OR_KEY" || error.code === "MISSING_API_KEY") {
-          quotaIssue = true;
-          break;
-        }
-      }
-    }
-  }
+  const { added: batchAdded, failureCode } = await importBatch(targets);
+  added += batchAdded;
+  if (failureCode === "YOUTUBE_QUOTA_OR_KEY" || failureCode === "MISSING_API_KEY") quotaIssue = true;
+
   for (const group of ALL_AGE_GROUPS) await importApprovedDiscovery(group);
 
   await putCached(META_KEY, {

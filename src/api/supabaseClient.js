@@ -8,6 +8,9 @@ export const supabase = createClient(url, anonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    persistSession: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    storageKey: 'safetube-auth',
   },
 });
 

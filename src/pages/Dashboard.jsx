@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Pencil, Trash2, Users, ShieldCheck, Download, Loader2,
 import { listProfiles, deleteProfile } from "@/adapters/localDb";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/AuthContext";
+import { isParentSignedIn, clearParentSignedIn } from "@/lib/parentSession";
 import ParentArea from "@/components/ParentArea";
 import ProfileEditor from "@/components/profiles/ProfileEditor";
 import CuratorPortal from "@/components/dashboard/CuratorPortal";
@@ -33,16 +34,21 @@ export default function Dashboard() {
   }, []);
 
   const signOut = async () => {
+    clearParentSignedIn();
     await logout(false);
     setAuthState("signedOut");
   };
 
   useEffect(() => {
+    if (isParentSignedIn() || isAuthenticated) {
+      setAuthState("signedIn");
+      return;
+    }
     if (isLoadingAuth || !authChecked) {
       setAuthState("checking");
       return;
     }
-    setAuthState(isAuthenticated ? "signedIn" : "signedOut");
+    setAuthState("signedOut");
   }, [isAuthenticated, isLoadingAuth, authChecked]);
 
   useEffect(() => {

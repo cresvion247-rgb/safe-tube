@@ -1,5 +1,6 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '@/api/supabaseClient';
+import { clearParentSignedIn, markParentSignedIn } from '@/lib/parentSession';
 
 const AuthContext = createContext();
 
@@ -35,23 +36,17 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null);
-  const applyingRef = useRef(false);
 
   const applySession = useCallback(async (session) => {
-    if (applyingRef.current) return;
-    applyingRef.current = true;
-    try {
-      if (!session?.user) {
-        setUser(null);
-        setIsAuthenticated(false);
-        return;
-      }
-      const merged = await loadMergedUser(session.user);
-      setUser(merged);
-      setIsAuthenticated(true);
-    } finally {
-      applyingRef.current = false;
+    if (!session?.user) {
+      setUser(null);
+      setIsAuthenticated(false);
+      return;
     }
+    const merged = await loadMergedUser(session.user);
+    setUser(merged);
+    setIsAuthenticated(true);
+    markParentSignedIn();
   }, []);
 
   const checkUserAuth = useCallback(async () => {
@@ -63,8 +58,6 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
     } catch (error) {
       console.error('User auth check failed:', error);
-      setUser(null);
-      setIsAuthenticated(false);
     } finally {
       setIsLoadingAuth(false);
       setAuthChecked(true);
@@ -98,16 +91,16 @@ export const AuthProvider = ({ children }) => {
     checkAppState();
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      // Querying Supabase inside this callback deadlocks the auth lock and can
-      // look like a sign-out after any later UI action (e.g. create profile).
       setTimeout(() => {
         if (cancelled) return;
         if (event === 'INITIAL_SESSION') return;
-        applySession(session).then(() => {
-          if (cancelled) return;
-          setAuthChecked(true);
-          setIsLoadingAuth(false);
-        });
+        if (event === 'SIGNED_OUT') {
+          applySession(null);
+          return;
+        }
+        if (session?.user) applySession(session);
+        setAuthChecked(true);
+        setIsLoadingAuth(false);
       }, 0);
     });
 
@@ -118,6 +111,7 @@ export const AuthProvider = ({ children }) => {
   }, [checkAppState, applySession]);
 
   const logout = async (shouldRedirect = true) => {
+    clearParentSignedIn();
     await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);

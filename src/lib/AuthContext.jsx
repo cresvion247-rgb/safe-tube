@@ -1,22 +1,30 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '@/api/supabaseClient';
 
 const AuthContext = createContext();
 
 async function loadMergedUser(sessionUser) {
   if (!sessionUser) return null;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, email, role')
-    .eq('id', sessionUser.id)
-    .maybeSingle();
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, email, role')
+      .eq('id', sessionUser.id)
+      .maybeSingle();
 
-  return {
-    id: sessionUser.id,
-    email: sessionUser.email || profile?.email || '',
-    role: profile?.role || sessionUser.user_metadata?.role || 'user',
-    ...profile,
-  };
+    return {
+      id: sessionUser.id,
+      email: sessionUser.email || profile?.email || '',
+      role: profile?.role || sessionUser.user_metadata?.role || 'user',
+      ...(profile || {}),
+    };
+  } catch {
+    return {
+      id: sessionUser.id,
+      email: sessionUser.email || '',
+      role: sessionUser.user_metadata?.role || 'user',
+    };
+  }
 }
 
 export const AuthProvider = ({ children }) => {
@@ -27,16 +35,23 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [appPublicSettings, setAppPublicSettings] = useState(null);
+  const applyingRef = useRef(false);
 
   const applySession = useCallback(async (session) => {
-    if (!session?.user) {
-      setUser(null);
-      setIsAuthenticated(false);
-      return;
+    if (applyingRef.current) return;
+    applyingRef.current = true;
+    try {
+      if (!session?.user) {
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+      const merged = await loadMergedUser(session.user);
+      setUser(merged);
+      setIsAuthenticated(true);
+    } finally {
+      applyingRef.current = false;
     }
-    const merged = await loadMergedUser(session.user);
-    setUser(merged);
-    setIsAuthenticated(true);
   }, []);
 
   const checkUserAuth = useCallback(async () => {
@@ -79,13 +94,27 @@ export const AuthProvider = ({ children }) => {
   }, [checkUserAuth]);
 
   useEffect(() => {
+    let cancelled = false;
     checkAppState();
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      applySession(session);
-      setAuthChecked(true);
-      setIsLoadingAuth(false);
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      // Querying Supabase inside this callback deadlocks the auth lock and can
+      // look like a sign-out after any later UI action (e.g. create profile).
+      setTimeout(() => {
+        if (cancelled) return;
+        if (event === 'INITIAL_SESSION') return;
+        applySession(session).then(() => {
+          if (cancelled) return;
+          setAuthChecked(true);
+          setIsLoadingAuth(false);
+        });
+      }, 0);
     });
-    return () => subscription.subscription.unsubscribe();
+
+    return () => {
+      cancelled = true;
+      subscription.subscription.unsubscribe();
+    };
   }, [checkAppState, applySession]);
 
   const logout = async (shouldRedirect = true) => {

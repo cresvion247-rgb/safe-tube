@@ -26,10 +26,6 @@ const REFRESH_CHANNELS = 8; // channels scanned per library refresh
 const HEAL_PER_REFRESH = 2; // unresolved channels retried per refresh
 const AUTO_REFRESH_MS = 24 * 60 * 60 * 1000;
 
-// --- Source channels (the permanent Default Trusted Channel Registry) ---
-
-// Registry + seed whitelist form the immutable default trusted set. Parent-added
-// channels are optional extras on top — they never remove or replace trusted ones.
 export async function defaultTrustedChannels() {
   const seen = new Set();
   const out = [];
@@ -48,7 +44,6 @@ export async function defaultTrustedChannels() {
   return out;
 }
 
-// Optional extras: parent-approved channels and previously runtime-vetted ones.
 async function parentChannels() {
   const out = [];
   const custom = (await listCustomChannels()).filter((c) => c.status === "approved");
@@ -79,8 +74,6 @@ async function allSources(profileAgeGroup) {
   return [...trusted, ...extras].sort((a, b) => rank(a) - rank(b));
 }
 
-// Permanent channel-name → channelId resolution. Resolved once, stored forever;
-// playback and refreshes only ever use stored ids — never channel-name search.
 async function resolveMissing(names) {
   const map = (await getCached(IDS_KEY)) ?? {};
   const missing = names.filter((n) => !map[n]);
@@ -95,8 +88,6 @@ async function resolveMissing(names) {
   return map;
 }
 
-// Scans recent uploads of one known channel and upserts eligible videos.
-// Never deletes or downgrades existing approved library videos.
 async function scanChannel(channel, channelId) {
   const uploads = await fetchChannelUploads(channelId, 10);
   const gated = applyWhitelistGates(uploads, channel.ageGroup);
@@ -136,8 +127,6 @@ async function scanChannel(channel, channelId) {
   return gated.length;
 }
 
-// Processes one bounded batch of not-yet-scanned sources. Failures are non-fatal:
-// scanned names stay recorded and heal through later refreshes.
 async function importBatch(batch) {
   let failureCode = null;
   let idMap = {};
@@ -149,11 +138,12 @@ async function importBatch(batch) {
   let added = 0;
   const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
   for (const channel of batch) {
-    scanned.add(channel.name);
     const channelId = channel.channelId || idMap[channel.name];
     if (!channelId) continue;
     try {
-      added += await scanChannel(channel, channelId);
+      const n = await scanChannel(channel, channelId);
+      added += n;
+      if (n > 0) scanned.add(`${channel.name}:${channel.ageGroup || ""}`);
     } catch (error) {
       if (error instanceof YoutubeApiError && !failureCode) failureCode = error.code;
     }
@@ -164,17 +154,15 @@ async function importBatch(batch) {
 
 let backgroundImport = null;
 
-// Keeps filling the library in the background after the first awaited batch.
-// Stops on a quota/key failure and resumes on a later session.
 function continueImportInBackground(sources) {
   if (backgroundImport) return;
   backgroundImport = (async () => {
     for (;;) {
       const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
-      const remaining = sources.filter((s) => !scanned.has(s.name));
+      const remaining = sources.filter((s) => !scanned.has(`${s.name}:${s.ageGroup || ""}`));
       if (!remaining.length) break;
       const { failureCode } = await importBatch(remaining.slice(0, IMPORT_BATCH));
-      if (failureCode) break; // quota, missing key, or network — retry another day
+      if (failureCode) break;
     }
   })()
     .catch(() => {})
@@ -183,27 +171,25 @@ function continueImportInBackground(sources) {
     });
 }
 
-// First-run import: on a fresh device, quietly builds the initial library from
-// the trusted registry — one bounded batch awaited (this age group first), the
-// rest continues in the background. Child sessions after this never call YouTube.
 export async function ensureLibraryVideos(profile) {
   const existing = await libraryVideosForAge(profile.ageGroup);
   const sources = await allSources(profile.ageGroup);
+  const sameAge = sources.filter((s) => s.ageGroup === profile.ageGroup);
   if (existing.length > 0) {
-    continueImportInBackground(sources);
+    continueImportInBackground(sameAge.length ? sameAge : sources);
     return { ok: true, added: 0 };
   }
   const scanned = new Set((await getCached(SCANNED_KEY)) ?? []);
-  const targets = sources.filter((s) => !scanned.has(s.name)).slice(0, IMPORT_BATCH);
+  const pool = sameAge.length ? sameAge : sources;
+  const unscanned = pool.filter((s) => !scanned.has(`${s.name}:${s.ageGroup || ""}`));
+  const targets = (unscanned.length ? unscanned : pool).slice(0, IMPORT_BATCH);
   if (!targets.length) return { ok: true, added: 0 };
   const { added, failureCode } = await importBatch(targets);
-  continueImportInBackground(sources);
+  continueImportInBackground(pool);
   if (added === 0 && failureCode) return { ok: false, code: failureCode };
   return { ok: true, added };
 }
 
-// Parent-approved discovery videos move into the library so feeds stay
-// library-only. Local database operation — zero API calls.
 export async function importApprovedDiscovery(ageGroup) {
   const approved = (await getCached(`approved:${ageGroup}`)) ?? [];
   if (!approved.length) return 0;
@@ -221,8 +207,6 @@ export async function importApprovedDiscovery(ageGroup) {
   return approved.length;
 }
 
-// Library-only feed for a profile: approved stored videos for the age group.
-// Secondary target languages are always wholesome fun, never educational.
 export async function getLibraryVideosForProfile(profile) {
   const [primary = "en", ...secondary] = profile.targetLanguages || [];
   const stored = (await libraryVideosForAge(profile.ageGroup)).filter((v) => v.approved !== false);
@@ -232,8 +216,6 @@ export async function getLibraryVideosForProfile(profile) {
   });
 }
 
-// The admin/parent Library Refresh: scans a small rotating group of known
-// channels, retrieves only recent uploads, and never removes existing videos.
 export async function refreshLibrary({ manual = false } = {}) {
   const meta = (await getCached(META_KEY)) ?? {};
   const now = Date.now();
@@ -241,7 +223,6 @@ export async function refreshLibrary({ manual = false } = {}) {
     return { skipped: true, added: 0, quotaIssue: false };
   }
 
-  // Known, resolved channels rotate through the refresh — a few per run.
   const resolved = (await listLibraryChannels())
     .filter((c) => c.active !== false)
     .map((c) => ({
@@ -254,13 +235,11 @@ export async function refreshLibrary({ manual = false } = {}) {
       source: c.source,
     }));
 
-  // Healing: trusted channels whose id resolution failed earlier get retried.
   const knownIds = (await getCached(IDS_KEY)) ?? {};
   const heal = (await defaultTrustedChannels())
     .filter((c) => !resolved.some((r) => r.name === c.name) && !knownIds[c.name])
     .slice(0, HEAL_PER_REFRESH);
 
-  // Parent extras not yet in the library join the next refresh.
   const extras = (await parentChannels()).filter((c) => !resolved.some((r) => r.name === c.name));
 
   const rotating =
@@ -271,8 +250,16 @@ export async function refreshLibrary({ manual = false } = {}) {
         })
       : [];
 
-  const targets = [...heal, ...extras, ...rotating].filter(
-    (channel, index, all) => all.findIndex((c) => c.name === channel.name) === index
+  const emptyAgeSources = [];
+  const trusted = await defaultTrustedChannels();
+  for (const group of ALL_AGE_GROUPS) {
+    const have = await libraryVideosForAge(group);
+    if (have.length > 0) continue;
+    emptyAgeSources.push(...trusted.filter((s) => s.ageGroup === group).slice(0, IMPORT_BATCH));
+  }
+
+  const targets = [...emptyAgeSources, ...heal, ...extras, ...rotating].filter(
+    (channel, index, all) => all.findIndex((c) => c.name === channel.name && c.ageGroup === channel.ageGroup) === index
   );
 
   let added = 0;
@@ -304,12 +291,10 @@ export async function refreshLibrary({ manual = false } = {}) {
   return { added, quotaIssue };
 }
 
-// Auto-refresh: at most once a day, fire-and-forget — never blocks a child.
 export function maybeAutoRefresh() {
   refreshLibrary({ manual: false }).catch(() => {});
 }
 
-// Visibility-only snapshot for the parent Library status area.
 export async function libraryStats() {
   const [channels, videos, trusted, meta] = await Promise.all([
     listLibraryChannels(),

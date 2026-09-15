@@ -8,6 +8,7 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { markParentSignedIn } from "@/lib/parentSession";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -23,7 +24,8 @@ export default function Login() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      window.location.href = returnTo;
+      markParentSignedIn();
+      window.location.assign(returnTo);
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
@@ -32,6 +34,7 @@ export default function Login() {
   };
 
   const handleGoogle = () => {
+    markParentSignedIn();
     supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}${returnTo}` },

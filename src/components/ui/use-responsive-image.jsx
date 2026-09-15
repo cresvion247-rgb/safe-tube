@@ -16,12 +16,11 @@ export function useResponsiveImage({ parsed, fittingType, focalPoint, quality, c
     const replace = (event) => onSourceChange(
       event.detail.src, getImagePreviewClassName(className, wrapper.className, cn("inline-block relative", className))
     )
-    wrapper.addEventListener("base44:image-replace", replace)
-    return () => wrapper.removeEventListener("base44:image-replace", replace)
+    wrapper.addEventListener("image-replace", replace)
+    return () => wrapper.removeEventListener("image-replace", replace)
   }, [className, onSourceChange])
 
   const crop = fittingType !== "fit"
-  // Wait for useSize's pre-paint measurement before requesting a transform.
   const options = size && {
     width: size.width || DEFAULT_TRANSFORM_WIDTH,
     height: size.height || undefined,

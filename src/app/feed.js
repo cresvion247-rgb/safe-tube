@@ -11,7 +11,7 @@ import {
   importApprovedDiscovery,
   maybeAutoRefresh,
 } from "@/app/library";
-import { loadPreferences, preferenceScore } from "@/app/preferences";
+import { applyPreferences, loadPreferences } from "@/app/preferences";
 
 export async function loadFeed(profile) {
   await importApprovedDiscovery(profile.ageGroup);
@@ -26,8 +26,7 @@ export async function loadFeed(profile) {
     maybeAutoRefresh();
   }
   const prefs = await loadPreferences(profile.id);
-  videos = [...videos].sort((a, b) => preferenceScore(b, prefs) - preferenceScore(a, prefs));
-  return { videos, fromCache: false };
+  return { videos: applyPreferences(videos, prefs), fromCache: false };
 }
 
 export function makeQueue(videos, tokenBalance, comprehensionScore, ageGroup) {

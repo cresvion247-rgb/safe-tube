@@ -17,12 +17,11 @@ export const AGE_GROUP_LABELS = {
   [AGE_GROUPS.TEEN]: "Teen (13–16)",
 };
 
-// Attention-span duration ceilings per age group, in seconds.
 export const MAX_DURATION_SECONDS = {
-  [AGE_GROUPS.TODDLER]: 600, // 10 minutes
-  [AGE_GROUPS.EARLY_LEARNER]: 900, // 15 minutes
-  [AGE_GROUPS.TWEEN]: 1500, // 25 minutes
-  [AGE_GROUPS.TEEN]: 1800, // 30 minutes
+  [AGE_GROUPS.TODDLER]: 600,
+  [AGE_GROUPS.EARLY_LEARNER]: 900,
+  [AGE_GROUPS.TWEEN]: 1500,
+  [AGE_GROUPS.TEEN]: 1800,
 };
 
 export const CATEGORIES = {
@@ -33,7 +32,6 @@ export const CATEGORIES = {
   NATURE_ANIMALS: "Nature_Animals",
   LIFE_SKILLS: "Life_Skills",
   HEALTH_MOVEMENT: "Health_Movement",
-  MUSIC_DANCE: "Music_Dance",
   WORLD_CULTURES: "World_Cultures",
   HISTORY: "History",
   GEOGRAPHY: "Geography",
@@ -52,7 +50,6 @@ export const EDUCATIONAL_CATEGORIES = [
   CATEGORIES.NATURE_ANIMALS,
   CATEGORIES.LIFE_SKILLS,
   CATEGORIES.HEALTH_MOVEMENT,
-  CATEGORIES.MUSIC_DANCE,
   CATEGORIES.WORLD_CULTURES,
   CATEGORIES.HISTORY,
   CATEGORIES.GEOGRAPHY,
@@ -62,11 +59,7 @@ export const EDUCATIONAL_CATEGORIES = [
   CATEGORIES.ENVIRONMENTAL_AWARENESS,
 ];
 export const ENTERTAINMENT_CATEGORY = CATEGORIES.WHOLESOME_ENTERTAINMENT;
-
-// Hierarchical Faith & Values root. Full tree lives in src/data/categoryTree.js.
 export const FAITH_ROOT_ID = "cat_faith";
-
-// Popular discovery gate: a viral video must have at least this many views.
 export const MIN_VIEWS_FOR_DISCOVERY = 1000000;
 
 export const TOKEN_RULES = {
@@ -75,7 +68,6 @@ export const TOKEN_RULES = {
   ENTERTAINMENT_COST: 1,
 };
 
-// Fun unlocks cost more for the youngest group: 2 learning videos per fun video.
 export const entertainmentCostFor = (ageGroup) =>
   ageGroup === AGE_GROUPS.TODDLER ? 2 : TOKEN_RULES.ENTERTAINMENT_COST;
 
@@ -83,7 +75,6 @@ export const DEFAULT_DAILY_LIMIT_MINUTES = 60;
 export const MIN_DAILY_LIMIT_MINUTES = 15;
 export const MAX_DAILY_LIMIT_MINUTES = 240;
 
-// Supported content languages for feed discovery (kept separate from the UI language catalog).
 export const LANGUAGES = [
   { code: "en", nativeName: "English" },
   { code: "es", nativeName: "Español" },

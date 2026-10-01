@@ -39,6 +39,11 @@ const EXTRA = {
   "category.AI": "AI",
   "category.Film_Making": "Film making",
   "category.Digital_Skills": "Digital skills",
+  "category.IQRA": "IQRA",
+  "category.iqra.letters": "Letters",
+  "category.iqra.qaida": "Qaida",
+  "category.iqra.reading": "Reading",
+  "category.iqra.tajweed": "Tajweed",
 };
 
 const isSupported = (code) => UI_LANGUAGES.some((language) => language.code === code);

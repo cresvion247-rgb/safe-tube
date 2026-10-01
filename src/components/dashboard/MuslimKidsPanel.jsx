@@ -5,11 +5,12 @@ import { applyWhitelistGates } from "@/domain/gates";
 import { listCustomChannels, listProfiles, putLibraryChannel, putLibraryVideos } from "@/adapters/localDb";
 import { YoutubeApiError } from "@/adapters/youtubeClient";
 import { youtubeSource } from "@/content/sources/youtubeSource";
-import { muslimKidsPack, suggestionsForAge } from "@/content/packs/muslimKids";
+import { muslimKidsPack, suggestionsFor } from "@/content/packs/muslimKids";
 import { parseVideoId, youtubeErrorKey } from "@/content/parseVideoId";
 import { addParentChannel } from "@/app/channelPacks";
 
 const ISLAM_CATEGORY = muslimKidsPack.categoryId;
+const LEVEL_LABELS = { letters: "Letters", qaida: "Qaida", reading: "Reading", tajweed: "Tajweed" };
 
 async function storeUploads(channel, channelId, ageGroup) {
   const uploads = await youtubeSource.listUploads(channelId, 5);
@@ -57,7 +58,7 @@ export default function MuslimKidsPanel({ t, onChanged }) {
 
   const profile = profiles.find((item) => item.id === profileId) ?? profiles[0] ?? null;
   const ageGroup = profile?.ageGroup;
-  const suggestions = ageGroup ? suggestionsForAge(ageGroup, addedNames, 5) : [];
+  const suggestions = profile ? suggestionsFor(profile, addedNames, 5) : [];
 
   const refresh = async () => {
     const [nextProfiles, channels] = await Promise.all([listProfiles(), listCustomChannels()]);
@@ -160,7 +161,7 @@ export default function MuslimKidsPanel({ t, onChanged }) {
     <section className="space-y-6 rounded-3xl border border-border bg-card p-6">
       <div>
         <h2 className="font-heading text-xl font-bold">{t("curator.muslimTitle")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Five suggestions for the selected child's age. Adding one replaces it with the next. Your own channel or video can still be pasted below.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Suggestions follow the child's Quran reading level, including beginner Qaida for an older child. Adding one replaces it. Paste your own channel below.</p>
       </div>
       {profiles.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -172,12 +173,15 @@ export default function MuslimKidsPanel({ t, onChanged }) {
         </div>
       )}
       {suggestions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No more suggestions for this age. Paste your own channel below.</p>
+        <p className="text-sm text-muted-foreground">No more suggestions for this level. Paste your own channel below.</p>
       ) : (
         <ul className="divide-y divide-border">
           {suggestions.map((channel) => (
             <li key={channel.name} className="flex items-center justify-between gap-3 py-3">
-              <p className="font-semibold">{channel.name}</p>
+              <div>
+                <p className="font-semibold">{channel.name}</p>
+                {channel.level && <p className="text-xs text-muted-foreground">{LEVEL_LABELS[channel.level]}</p>}
+              </div>
               <button type="button" disabled={busy === channel.name} onClick={() => addPackChannel(channel)} className="flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
                 {busy === channel.name ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                 {t("curator.add")}

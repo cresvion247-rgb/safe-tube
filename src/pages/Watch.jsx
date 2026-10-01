@@ -7,7 +7,6 @@ import { SOFT_PAUSE_LINES, pickRandom } from "@/data/intermissions";
 import { useI18n } from "@/lib/i18n";
 import { loadProfileForToday, getTodaySession, saveSession, saveProfile, getWatchedVideoIds, recordWatchedVideo, clearWatchedHistory } from "@/adapters/localDb";
 import { loadFeed, makeQueue, YoutubeApiError } from "@/app/feed";
-import { matchesLanguage } from "@/app/categoryLoad";
 import { recordPreference } from "@/app/preferences";
 import SafePlayerView from "@/components/SafePlayerView";
 import SoftPauseScreen from "@/components/SoftPauseScreen";
@@ -55,17 +54,6 @@ function LanguageSwitch({ languages, value, onChange }) {
   );
 }
 
-function WaitingPlayer({ language }) {
-  return (
-    <div className="grid aspect-video w-full place-items-center rounded-3xl border border-border bg-card p-8 text-center">
-      <div className="space-y-2">
-        <p className="font-heading text-2xl font-bold">Player ready</p>
-        <p className="text-muted-foreground">A {language.toUpperCase()} lesson will appear here. A lesson in another language will not play.</p>
-      </div>
-    </div>
-  );
-}
-
 export default function Watch() {
   const { profileId } = useParams();
   const navigate = useNavigate();
@@ -87,7 +75,8 @@ export default function Watch() {
 
   const buildFrom = async (loaded, videos, language = watchLanguage) => {
     const watchedIds = new Set(await getWatchedVideoIds(profileId));
-    const pool = videos.filter((video) => matchesLanguage(video, language));
+    const inLanguage = videos.filter((video) => !video.language || video.language === language);
+    const pool = inLanguage.length ? inLanguage : videos;
     let candidates = pool.filter((v) => !watchedIds.has(v.id));
     if (!candidates.length) {
       await clearWatchedHistory(profileId);
@@ -233,18 +222,15 @@ export default function Watch() {
   };
 
   if (phase === "timelock" && profile) return <ScreenTimeLock returnTo={`/watch/${profileId}`} onParentUnlock={handleParentUnlock} />;
-  if ((phase === "empty" || (queue[queueIndex] && !matchesLanguage(queue[queueIndex], watchLanguage))) && profile) {
+  if (phase === "empty" && profile) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 border-b border-border bg-background pt-safe">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 p-4 sm:p-6">
-            <Link to="/" className="flex h-12 items-center gap-2 rounded-full border border-border bg-card px-4 font-medium hover:bg-accent"><ArrowLeft className="h-5 w-5" /> {t("common.profiles")}</Link>
-            <LanguageSwitch languages={languages} value={watchLanguage} onChange={chooseLanguage} />
-          </div>
+        <header className="mx-auto flex max-w-5xl items-center justify-between p-4 sm:p-6">
+          <Link to="/" className="flex h-12 items-center gap-2 rounded-full border border-border bg-card px-4 font-medium hover:bg-accent"><ArrowLeft className="h-5 w-5" /> {t("common.profiles")}</Link>
+          <LanguageSwitch languages={languages} value={watchLanguage} onChange={chooseLanguage} />
         </header>
-        <main className="mx-auto max-w-6xl space-y-4 px-4 py-4">
-          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={languages} instructionLanguage={watchLanguage} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const matched = filtered.filter((video) => matchesLanguage(video, watchLanguage)); if (matched.length) buildFrom(profile, matched); }} />
-          <WaitingPlayer language={watchLanguage} />
+        <main className="mx-auto max-w-5xl space-y-4 px-4">
+          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
         </main>
       </div>
     );
@@ -261,7 +247,7 @@ export default function Watch() {
   }
   const current = queue[queueIndex];
   const upNext = queue.slice(queueIndex + 1, queueIndex + 4);
-  if (!current || !matchesLanguage(current, watchLanguage)) return null;
+  if (!current) return null;
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background pt-safe">
@@ -282,7 +268,7 @@ export default function Watch() {
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0 space-y-4">
-          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={languages} instructionLanguage={watchLanguage} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const matched = filtered.filter((video) => matchesLanguage(video, watchLanguage)); const currentId = queue[queueIndex]?.id; if (matched.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded && matched.length) buildFrom(loaded, matched); }} />
+          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
           <SafePlayerView key={`${current.id}-${watchLanguage}`} video={current} language={watchLanguage} onEnded={handleEnded} liveQuestions={learning?.questions} onQuestionAnswered={handleLiveQuestion} onPlayingChange={(isPlaying) => { playingRef.current = isPlaying; }} />
           <SlipNote video={current} ageGroup={profile.ageGroup} />
           {phase === "softpause" && <SoftPauseScreen line={softPauseLine} onNext={() => setPhase("intermission")} />}

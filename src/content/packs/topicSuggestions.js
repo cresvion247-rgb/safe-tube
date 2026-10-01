@@ -2,6 +2,7 @@ import { AGE_GROUPS, CATEGORIES } from "@/domain/constants";
 
 const all = [AGE_GROUPS.TODDLER, AGE_GROUPS.EARLY_LEARNER, AGE_GROUPS.TWEEN, AGE_GROUPS.TEEN];
 const older = [AGE_GROUPS.TWEEN, AGE_GROUPS.TEEN];
+const fromEarly = [AGE_GROUPS.EARLY_LEARNER, ...older];
 
 const TOPICS = [
   { category: CATEGORIES.STEM, label: "Science", ages: all, q: "science for kids" },
@@ -14,8 +15,11 @@ const TOPICS = [
   { category: CATEGORIES.HISTORY, label: "History", ages: older, q: "history for kids" },
   { category: CATEGORIES.GEOGRAPHY, label: "Geography", ages: older, q: "geography for kids" },
   { category: CATEGORIES.CODING_TECHNOLOGY, label: "Coding", ages: older, q: "coding for kids" },
-  { category: CATEGORIES.COOKING_FOOD, label: "Cooking", ages: [AGE_GROUPS.EARLY_LEARNER, ...older], q: "cooking for kids" },
-  { category: CATEGORIES.SPORTS_GAMES, label: "Sports", ages: [AGE_GROUPS.EARLY_LEARNER, ...older], q: "sports for kids" },
+  { category: CATEGORIES.AI, label: "AI", ages: older, q: "artificial intelligence for kids" },
+  { category: CATEGORIES.FILM_MAKING, label: "Film making", ages: older, q: "film making for kids" },
+  { category: CATEGORIES.DIGITAL_SKILLS, label: "Digital skills", ages: fromEarly, q: "digital skills for kids" },
+  { category: CATEGORIES.COOKING_FOOD, label: "Cooking", ages: fromEarly, q: "cooking for kids" },
+  { category: CATEGORIES.SPORTS_GAMES, label: "Sports", ages: fromEarly, q: "sports for kids" },
   { category: CATEGORIES.ENVIRONMENTAL_AWARENESS, label: "Nature care", ages: all, q: "environment for kids" },
   { category: CATEGORIES.HEALTH_MOVEMENT, label: "Exercise", ages: all, kind: "exercise", q: "exercise for kids" },
   { category: CATEGORIES.HEALTH_MOVEMENT, label: "Self-defense", ages: older, kind: "defense", q: "self defense for teenagers" },

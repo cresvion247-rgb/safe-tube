@@ -6,12 +6,12 @@ import { safeQuery } from "@/domain/safety";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const HINT = { es: "en español", fr: "en français", de: "auf Deutsch", zh: "中文", ar: "بالعربية", hi: "हिंदी", pt: "em português", ja: "日本語", ru: "на русском", it: "in italiano", ko: "한국어", tr: "Türkçe", eu: "euskara", id: "bahasa Indonesia", pl: "po polsku", ur: "اردو" };
 
-export async function loadCategoryVideos(ageGroup, label, categoryId, languages = ["en"]) {
-  const base = label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`;
+export async function loadCategoryVideos(ageGroup, label, categoryId, languages = ["en"], query) {
+  const base = query || (label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`);
   const codes = [...new Set((languages.length ? languages : ["en"]).map((code) => String(code).slice(0, 2).toLowerCase()))];
   const saved = [];
   for (const language of codes) {
-    const term = safeQuery(language === "en" ? base : `${base} ${HINT[language] || language}`);
+    const term = safeQuery(query || (language === "en" ? base : `${base} ${HINT[language] || language}`));
     if (!term) continue;
     await sleep(1500);
     const found = await searchVideos({ term, languageCode: language, maxResults: 4 });
@@ -23,7 +23,7 @@ export async function loadCategoryVideos(ageGroup, label, categoryId, languages 
       description: video.description,
       channelId: video.channelId,
       channelTitle: video.channelTitle,
-      category: "Emotional_Intelligence",
+      category: "Literacy_Language",
       categoryId,
       ageGroup,
       language,

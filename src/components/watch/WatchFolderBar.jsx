@@ -12,7 +12,9 @@ export default function WatchFolderBar({ videos, onFilter, t }) {
   const ageGroup = videos[0]?.ageGroup;
 
   useEffect(() => {
-    onFilter(videosInCategory([...videos, ...extra], tree, selectedId));
+    const filtered = videosInCategory([...videos, ...extra], tree, selectedId);
+    if (selectedId && !filtered.length) return;
+    onFilter(filtered);
   }, [selectedId, videos, tree, extra]);
 
   const select = async (id) => {
@@ -30,7 +32,7 @@ export default function WatchFolderBar({ videos, onFilter, t }) {
     }
     setNotice("Videos for this category will load over time.");
     try {
-      const loaded = await loadCategoryVideos(ageGroup, legacy || node?.slug || "Learning");
+      const loaded = await loadCategoryVideos(ageGroup, legacy || node?.slug || "Learning", id);
       if (loaded.length) setExtra((current) => [...current, ...loaded]);
       setNotice(loaded.length ? "A few videos are ready. More can load later." : "Videos for this category will load over time.");
     } catch {

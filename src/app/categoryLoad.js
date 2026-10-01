@@ -4,31 +4,38 @@ import { putLibraryVideos } from "@/adapters/localDb";
 import { safeQuery } from "@/domain/safety";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const HINT = { es: "en español", fr: "en français", de: "auf Deutsch", zh: "中文", ar: "بالعربية", hi: "हिंदी", pt: "em português", ja: "日本語", ru: "на русском", it: "in italiano", ko: "한국어", tr: "Türkçe", eu: "euskara", id: "bahasa Indonesia", pl: "po polsku", ur: "اردو" };
 
-export async function loadCategoryVideos(ageGroup, label, categoryId) {
-  const term = safeQuery(label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`);
-  if (!term) return [];
-  await sleep(1500);
-  const found = await searchVideos({ term, languageCode: "en", maxResults: 4 });
-  const gated = applyWhitelistGates(found, ageGroup).slice(0, 2);
-  const now = new Date().toISOString();
-  const videos = gated.map((video) => ({
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    channelId: video.channelId,
-    channelTitle: video.channelTitle,
-    category: "Emotional_Intelligence",
-    categoryId,
-    ageGroup,
-    language: "en",
-    durationSeconds: video.durationSeconds,
-    viewCount: video.viewCount,
-    thumbnail: video.thumbnail,
-    approved: true,
-    addedAt: now,
-    sourceChannelId: video.channelId,
-  }));
-  if (videos.length) await putLibraryVideos(videos);
-  return videos;
+export async function loadCategoryVideos(ageGroup, label, categoryId, languages = ["en"]) {
+  const base = label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`;
+  const codes = [...new Set((languages.length ? languages : ["en"]).map((code) => String(code).slice(0, 2).toLowerCase()))];
+  const saved = [];
+  for (const language of codes) {
+    const term = safeQuery(language === "en" ? base : `${base} ${HINT[language] || language}`);
+    if (!term) continue;
+    await sleep(1500);
+    const found = await searchVideos({ term, languageCode: language, maxResults: 4 });
+    const gated = applyWhitelistGates(found, ageGroup).slice(0, 2);
+    const now = new Date().toISOString();
+    const videos = gated.map((video) => ({
+      id: video.id,
+      title: video.title,
+      description: video.description,
+      channelId: video.channelId,
+      channelTitle: video.channelTitle,
+      category: "Emotional_Intelligence",
+      categoryId,
+      ageGroup,
+      language,
+      durationSeconds: video.durationSeconds,
+      viewCount: video.viewCount,
+      thumbnail: video.thumbnail,
+      approved: true,
+      addedAt: now,
+      sourceChannelId: video.channelId,
+    }));
+    if (videos.length) await putLibraryVideos(videos);
+    saved.push(...videos);
+  }
+  return saved;
 }

@@ -11,6 +11,7 @@ import { addParentChannel } from "@/app/channelPacks";
 import { legacyCategoryToId, idToLegacyCategory } from "@/domain/categories";
 import VerifiedChannelsPanel from "@/components/dashboard/VerifiedChannelsPanel";
 import CategoryTreeManager from "@/components/dashboard/CategoryTreeManager";
+import ChannelPackPanel from "@/components/dashboard/ChannelPackPanel";
 import CategoryPicker, { categoryPathLabel } from "@/components/dashboard/CategoryPicker";
 
 const parseChannelInput = (input) => {
@@ -177,6 +178,7 @@ export default function CuratorPortal() {
         )}
       </section>
 
+      <ChannelPackPanel t={t} />
       <CategoryTreeManager t={t} />
       <VerifiedChannelsPanel ageGroup={ageGroup} />
     </div>

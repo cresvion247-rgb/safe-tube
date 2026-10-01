@@ -76,6 +76,8 @@ export function systemCategoryTree() {
     node("cat_islam_sunni_maliki", "cat_islam_sunni", "Maliki", "category.faith.islam.sunni.maliki", { faith: true, sortOrder: 20 }),
     node("cat_islam_sunni_shafii", "cat_islam_sunni", "Shafii", "category.faith.islam.sunni.shafii", { faith: true, sortOrder: 30 }),
     node("cat_islam_sunni_hanbali", "cat_islam_sunni", "Hanbali", "category.faith.islam.sunni.hanbali", { faith: true, sortOrder: 40 }),
+    node("cat_islam_sunni_salafi", "cat_islam_sunni", "Salafi", "category.faith.islam.sunni.salafi", { faith: true, sortOrder: 45 }),
+    node("cat_islam_sunni_wahabi", "cat_islam_sunni", "Wahabi", "category.faith.islam.sunni.wahabi", { faith: true, sortOrder: 46 }),
     node("cat_islam_sunni_other", "cat_islam_sunni", "Other_Sunni", "category.faith.islam.sunni.other", { faith: true, sortOrder: 50 }),
     node("cat_islam_shia", "cat_islam", "Shia", "category.faith.islam.shia", { faith: true, sortOrder: 20 }),
     node("cat_islam_shia_twelver", "cat_islam_shia", "Twelver", "category.faith.islam.shia.twelver", { faith: true, sortOrder: 10 }),

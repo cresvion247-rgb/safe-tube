@@ -230,7 +230,7 @@ export default function Watch() {
           <LanguageSwitch languages={languages} value={watchLanguage} onChange={chooseLanguage} />
         </header>
         <main className="mx-auto max-w-5xl space-y-4 px-4">
-          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
+          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={languages} instructionLanguage={watchLanguage} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
         </main>
       </div>
     );
@@ -268,7 +268,7 @@ export default function Watch() {
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0 space-y-4">
-          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
+          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={languages} instructionLanguage={watchLanguage} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
           <SafePlayerView key={`${current.id}-${watchLanguage}`} video={current} language={watchLanguage} onEnded={handleEnded} liveQuestions={learning?.questions} onQuestionAnswered={handleLiveQuestion} onPlayingChange={(isPlaying) => { playingRef.current = isPlaying; }} />
           <SlipNote video={current} ageGroup={profile.ageGroup} />
           {phase === "softpause" && <SoftPauseScreen line={softPauseLine} onNext={() => setPhase("intermission")} />}

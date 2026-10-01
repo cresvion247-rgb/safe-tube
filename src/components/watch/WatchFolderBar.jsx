@@ -28,13 +28,13 @@ export default function WatchFolderBar({ videos, onFilter, t }) {
       setNotice("");
       return;
     }
-    setNotice("Videos for this category will load in time.");
+    setNotice("Videos for this category will load over time.");
     try {
       const loaded = await loadCategoryVideos(ageGroup, legacy || node?.slug || "Learning");
       if (loaded.length) setExtra((current) => [...current, ...loaded]);
-      setNotice(loaded.length ? "A few videos are ready. More can load later." : "Videos for this category will load in time.");
+      setNotice(loaded.length ? "A few videos are ready. More can load later." : "Videos for this category will load over time.");
     } catch {
-      setNotice("Videos for this category will load in time.");
+      setNotice("Videos for this category will load over time.");
     }
   };
 

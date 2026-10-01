@@ -5,14 +5,16 @@ export const AGE_GROUPS = {
   TODDLER: "toddler_2_4",
   EARLY_LEARNER: "early_learner_5_7",
   TWEEN: "tween_8_12",
+  TEEN: "teen_13_16",
 };
 
-export const ALL_AGE_GROUPS = [AGE_GROUPS.TODDLER, AGE_GROUPS.EARLY_LEARNER, AGE_GROUPS.TWEEN];
+export const ALL_AGE_GROUPS = [AGE_GROUPS.TODDLER, AGE_GROUPS.EARLY_LEARNER, AGE_GROUPS.TWEEN, AGE_GROUPS.TEEN];
 
 export const AGE_GROUP_LABELS = {
   [AGE_GROUPS.TODDLER]: "Toddler (2–4)",
   [AGE_GROUPS.EARLY_LEARNER]: "Early Learner (5–7)",
   [AGE_GROUPS.TWEEN]: "Tween (8–12)",
+  [AGE_GROUPS.TEEN]: "Teen (13–16)",
 };
 
 // Attention-span duration ceilings per age group, in seconds.
@@ -20,6 +22,7 @@ export const MAX_DURATION_SECONDS = {
   [AGE_GROUPS.TODDLER]: 600, // 10 minutes
   [AGE_GROUPS.EARLY_LEARNER]: 900, // 15 minutes
   [AGE_GROUPS.TWEEN]: 1500, // 25 minutes
+  [AGE_GROUPS.TEEN]: 1800, // 30 minutes
 };
 
 export const CATEGORIES = {

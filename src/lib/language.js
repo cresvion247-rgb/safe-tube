@@ -28,6 +28,8 @@ const EXTRA = {
   "category.faith.islam.sunni.maliki": "Maliki",
   "category.faith.islam.sunni.shafii": "Shafii",
   "category.faith.islam.sunni.hanbali": "Hanbali",
+  "category.faith.islam.sunni.salafi": "Salafi",
+  "category.faith.islam.sunni.wahabi": "Wahabi",
   "category.faith.islam.sunni.other": "Other Sunni",
   "category.faith.islam.shia.twelver": "Twelver",
   "category.faith.islam.shia.ismaili": "Ismaili",

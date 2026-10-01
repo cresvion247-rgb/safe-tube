@@ -60,6 +60,9 @@ export const EDUCATIONAL_CATEGORIES = [
 ];
 export const ENTERTAINMENT_CATEGORY = CATEGORIES.WHOLESOME_ENTERTAINMENT;
 
+// Hierarchical Faith & Values root. Full tree lives in src/data/categoryTree.js.
+export const FAITH_ROOT_ID = "cat_faith";
+
 // Popular discovery gate: a viral video must have at least this many views.
 export const MIN_VIEWS_FOR_DISCOVERY = 1000000;
 

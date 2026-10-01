@@ -1,6 +1,6 @@
 // Parent dashboard — behind parent email sign-in. Profiles, curation, backup.
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Plus, Pencil, Trash2, Users, ShieldCheck, Download, Loader2, LogOut, BookCheck } from "lucide-react";
 import { listProfiles, deleteProfile } from "@/adapters/localDb";
 import { useI18n } from "@/lib/i18n";
@@ -24,6 +24,7 @@ const TABS = [
 export default function Dashboard() {
   const { t } = useI18n();
   const { isAuthenticated, isLoadingAuth, authChecked, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [authState, setAuthState] = useState("checking");
   const [tab, setTab] = useState("profiles");
   const [profiles, setProfiles] = useState([]);
@@ -54,6 +55,17 @@ export default function Dashboard() {
   useEffect(() => {
     if (authState === "signedIn") load();
   }, [authState, load]);
+
+  useEffect(() => {
+    if (authState !== "signedIn") return;
+    const id = searchParams.get("edit");
+    if (!id || profiles.length === 0) return;
+    const found = profiles.find((profile) => profile.id === id);
+    if (!found) return;
+    setTab("profiles");
+    setEditing(found);
+    setSearchParams({}, { replace: true });
+  }, [authState, profiles, searchParams, setSearchParams]);
 
   if (authState !== "signedIn") {
     return (

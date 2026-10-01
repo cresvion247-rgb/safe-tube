@@ -13,15 +13,17 @@ import {
 } from "@/app/library";
 import { applyPreferences, loadPreferences } from "@/app/preferences";
 
+const allowed = (videos) => videos.filter((video) => video.category !== "Music_Dance");
+
 export async function loadFeed(profile) {
   await importApprovedDiscovery(profile.ageGroup);
-  let videos = await getLibraryVideosForProfile(profile);
+  let videos = allowed(await getLibraryVideosForProfile(profile));
   if (!videos.length) {
     const firstRun = await ensureLibraryVideos(profile);
     if (!firstRun.ok) {
       throw new YoutubeApiError("The video library is not available yet.", firstRun.code || "UNKNOWN");
     }
-    videos = await getLibraryVideosForProfile(profile);
+    videos = allowed(await getLibraryVideosForProfile(profile));
   } else {
     maybeAutoRefresh();
   }

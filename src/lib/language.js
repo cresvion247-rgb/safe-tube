@@ -17,6 +17,7 @@ const EXTRA = {
   "curator.videoAlsoChannel": "Also allow this channel",
   "curator.videoAdded": "Saved “{title}” for this age.",
   "curator.videoBad": "Paste a YouTube video link.",
+  "ageGroup.teen_13_16": "Teen (13–16)",
 };
 
 const isSupported = (code) => UI_LANGUAGES.some((language) => language.code === code);

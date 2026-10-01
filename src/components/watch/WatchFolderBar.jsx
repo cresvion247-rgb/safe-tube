@@ -47,7 +47,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], i
         setExtra((current) => [...current, ...loaded]);
         setNotice(`A ${language.toUpperCase()} lesson is ready.`);
       } else {
-        setNotice(`No ${language.toUpperCase()} lesson is ready yet. The player will stay here until one loads.`);
+        setNotice(`No ${language.toUpperCase()} lesson is ready yet. The player stays here until one loads.`);
       }
     } catch {
       setNotice(`${language.toUpperCase()} lessons will load over time.`);
@@ -58,17 +58,12 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], i
     <div className="space-y-2">
       <CategoryBrowse tree={tree} selectedId={selectedId} onSelect={select} t={t} />
       {iqraOpen && (
-        <div className="flex flex-wrap items-center gap-2">
-          {IQRA_LEVELS.map((level) => (
-            <button key={level.id} type="button" onClick={() => select(`cat_iqra_${level.id}`, level.id)} className="h-10 rounded-full border border-border bg-card px-4 text-sm font-semibold">{level.label}</button>
-          ))}
-          <label className="text-sm text-muted-foreground">
-            Instruction
-            <select value={instruction} onChange={(event) => { setInstruction(event.target.value); select(selectedId || IQRA, readingLevel, event.target.value); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
-              {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
-            </select>
-          </label>
-        </div>
+        <label className="flex items-center text-sm text-muted-foreground">
+          Instruction
+          <select value={instruction} onChange={(event) => { setInstruction(event.target.value); select(selectedId || IQRA, readingLevel, event.target.value); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
+            {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
+          </select>
+        </label>
       )}
       <p className="text-sm text-muted-foreground">{notice}</p>
     </div>

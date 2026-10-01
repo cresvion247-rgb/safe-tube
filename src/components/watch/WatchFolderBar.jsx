@@ -11,7 +11,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], i
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
   const [selectedId, setSelectedId] = useState(null);
   const [extra, setExtra] = useState([]);
-  const [notice, setNotice] = useState("Videos for this category will load over time in each selected language.");
+  const [notice, setNotice] = useState("Videos for this category will load over time.");
   const [instruction, setInstruction] = useState(instructionLanguage || languages[0] || "en");
   const group = ageGroup || videos[0]?.ageGroup;
   const iqraOpen = selectedId === IQRA || selectedId?.startsWith("cat_iqra_");
@@ -34,21 +34,23 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], i
     const legacy = idToLegacyCategory(id);
     const iqra = id === IQRA || id?.startsWith("cat_iqra_");
     const step = id?.replace("cat_iqra_", "") || level;
-    setNotice(iqra ? "IQRA lessons load in order for this level and instruction language." : "Videos for this category will load over time in each selected language.");
+    setNotice(`${language.toUpperCase()} lessons will load over time. Another language will not play.`);
     try {
       const loaded = await loadCategoryVideos(
         group,
         legacy || node?.slug || "Learning",
         id,
-        iqra ? [language] : [language],
+        [language],
         iqra ? iqraQuery(IQRA_LEVELS.some((item) => item.id === step) ? step : level, group, language) : undefined,
       );
       if (loaded.length) {
         setExtra((current) => [...current, ...loaded]);
-        setNotice("A few lessons are ready. The next step can load later.");
+        setNotice(`A ${language.toUpperCase()} lesson is ready.`);
+      } else {
+        setNotice(`No ${language.toUpperCase()} lesson is ready yet. The player will stay here until one loads.`);
       }
     } catch {
-      setNotice("Videos for this category will load over time.");
+      setNotice(`${language.toUpperCase()} lessons will load over time.`);
     }
   };
 

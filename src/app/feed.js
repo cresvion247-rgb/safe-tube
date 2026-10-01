@@ -11,23 +11,22 @@ import {
   importApprovedDiscovery,
   maybeAutoRefresh,
 } from "@/app/library";
+import { loadPreferences, preferenceScore } from "@/app/preferences";
 
 export async function loadFeed(profile) {
-  // Parent-approved videos sync into the library first (local-only, no API calls).
   await importApprovedDiscovery(profile.ageGroup);
   let videos = await getLibraryVideosForProfile(profile);
   if (!videos.length) {
-    // Fresh device: bounded first-run import, showing whatever is ready.
     const firstRun = await ensureLibraryVideos(profile);
     if (!firstRun.ok) {
       throw new YoutubeApiError("The video library is not available yet.", firstRun.code || "UNKNOWN");
     }
     videos = await getLibraryVideosForProfile(profile);
   } else {
-    // Stored library present: children never wait on YouTube. The library
-    // refreshes itself in the background at most once a day.
     maybeAutoRefresh();
   }
+  const prefs = await loadPreferences(profile.id);
+  videos = [...videos].sort((a, b) => preferenceScore(b, prefs) - preferenceScore(a, prefs));
   return { videos, fromCache: false };
 }
 

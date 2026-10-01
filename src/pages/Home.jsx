@@ -1,5 +1,5 @@
 // Home: the child profile picker. Kids tap their card to start watching;
-// parents tap the shield button to reach the parent area (dashboard).
+// parents tap Edit or the shield button to reach the parent area.
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck, Plus, Tv, Loader2 } from "lucide-react";
@@ -70,7 +70,12 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 md:grid-cols-3">
             {profiles.map((profile) => (
-              <ProfileCard key={profile.id} profile={profile} onOpen={(p) => navigate(`/watch/${p.id}`)} />
+              <ProfileCard
+                key={profile.id}
+                profile={profile}
+                onOpen={(p) => navigate(`/watch/${p.id}`)}
+                onEdit={(p) => navigate(`/dashboard?edit=${encodeURIComponent(p.id)}`)}
+              />
             ))}
           </div>
         )}

@@ -1,26 +1,11 @@
-// Watch: the child's session. Gated feed → safe player → soft pause → intermission → next,
-// with the token economy, the daily screen-time lock, and the adaptive feedback loop.
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Coins, Tv, Loader2, ShieldCheck, SkipForward, ListMusic } from "lucide-react";
-import {
-  EDUCATIONAL_CATEGORIES,
-  ENTERTAINMENT_CATEGORY,
-  TOKEN_RULES,
-  entertainmentCostFor,
-} from "@/domain/constants";
+import { EDUCATIONAL_CATEGORIES, ENTERTAINMENT_CATEGORY, TOKEN_RULES, entertainmentCostFor } from "@/domain/constants";
 import { updateComprehensionScore } from "@/domain/adaptive";
 import { SOFT_PAUSE_LINES, pickRandom } from "@/data/intermissions";
 import { useI18n } from "@/lib/i18n";
-import {
-  loadProfileForToday,
-  getTodaySession,
-  saveSession,
-  saveProfile,
-  getWatchedVideoIds,
-  recordWatchedVideo,
-  clearWatchedHistory,
-} from "@/adapters/localDb";
+import { loadProfileForToday, getTodaySession, saveSession, saveProfile, getWatchedVideoIds, recordWatchedVideo, clearWatchedHistory } from "@/adapters/localDb";
 import { loadFeed, makeQueue, YoutubeApiError } from "@/app/feed";
 import { recordPreference } from "@/app/preferences";
 import SafePlayerView from "@/components/SafePlayerView";
@@ -56,6 +41,19 @@ const InfoScreen = ({ kind }) => {
   );
 };
 
+function LanguageSwitch({ languages, value, onChange }) {
+  if (!languages || languages.length < 2) return null;
+  return (
+    <div className="flex gap-1" aria-label="Video language">
+      {languages.map((code) => (
+        <button key={code} type="button" onClick={() => onChange(code)} className={`h-10 rounded-full px-3 text-sm font-semibold ${value === code ? "bg-primary text-primary-foreground" : "border border-border bg-card"}`}>
+          {code.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Watch() {
   const { profileId } = useParams();
   const navigate = useNavigate();
@@ -68,17 +66,21 @@ export default function Watch() {
   const [phase, setPhase] = useState("loading");
   const [softPauseLine, setSoftPauseLine] = useState("");
   const [learning, setLearning] = useState(null);
+  const [watchLanguage, setWatchLanguage] = useState("en");
   const playingRef = useRef(false);
   const sessionRef = useRef(null);
   const secondsRef = useRef(0);
   const profileRef = useRef(null);
+  const languages = profile?.targetLanguages?.length ? profile.targetLanguages : ["en"];
 
-  const buildFrom = async (loaded, videos) => {
+  const buildFrom = async (loaded, videos, language = watchLanguage) => {
     const watchedIds = new Set(await getWatchedVideoIds(profileId));
-    let candidates = videos.filter((v) => !watchedIds.has(v.id));
+    const inLanguage = videos.filter((video) => !video.language || video.language === language);
+    const pool = inLanguage.length ? inLanguage : videos;
+    let candidates = pool.filter((v) => !watchedIds.has(v.id));
     if (!candidates.length) {
       await clearWatchedHistory(profileId);
-      candidates = videos;
+      candidates = pool;
     }
     if (!candidates.length) {
       setQueue([]);
@@ -92,6 +94,12 @@ export default function Watch() {
     setPhase(secondsRef.current >= (loaded.dailyTimeLimitMinutes ?? 60) * 60 ? "timelock" : "ready");
   };
 
+  const chooseLanguage = (code) => {
+    setWatchLanguage(code);
+    const loaded = profileRef.current;
+    if (loaded && libraryVideos.length) buildFrom(loaded, libraryVideos, code);
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -103,6 +111,8 @@ export default function Watch() {
       }
       setProfile(loaded);
       profileRef.current = loaded;
+      const first = loaded.targetLanguages?.[0] || "en";
+      setWatchLanguage(first);
       const session = await getTodaySession(profileId);
       sessionRef.current = session;
       secondsRef.current = session.secondsToday ?? 0;
@@ -114,7 +124,7 @@ export default function Watch() {
           setPhase("empty");
           return;
         }
-        await buildFrom(loaded, videos);
+        await buildFrom(loaded, videos, first);
       } catch (error) {
         if (!alive) return;
         setPhase(error instanceof YoutubeApiError && error.code === "MISSING_API_KEY" ? "nokey" : "error");
@@ -217,9 +227,10 @@ export default function Watch() {
       <div className="min-h-screen bg-background">
         <header className="mx-auto flex max-w-5xl items-center justify-between p-4 sm:p-6">
           <Link to="/" className="flex h-12 items-center gap-2 rounded-full border border-border bg-card px-4 font-medium hover:bg-accent"><ArrowLeft className="h-5 w-5" /> {t("common.profiles")}</Link>
+          <LanguageSwitch languages={languages} value={watchLanguage} onChange={chooseLanguage} />
         </header>
         <main className="mx-auto max-w-5xl space-y-4 px-4">
-          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={profile.targetLanguages || ["en"]} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
+          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
         </main>
       </div>
     );
@@ -249,6 +260,7 @@ export default function Watch() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <LanguageSwitch languages={languages} value={watchLanguage} onChange={chooseLanguage} />
             <TokenBadge tokens={profile.educationalTokens} />
             <Link to="/dashboard" aria-label={t("common.parentSettings")} className="grid h-12 w-12 place-items-center rounded-full border border-border bg-card hover:bg-accent"><ShieldCheck className="h-5 w-5" /></Link>
           </div>
@@ -256,8 +268,8 @@ export default function Watch() {
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0 space-y-4">
-          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={profile.targetLanguages || ["en"]} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
-          <SafePlayerView key={current.id} video={current} language={(profile.targetLanguages || ["en"])[0]} onEnded={handleEnded} liveQuestions={learning?.questions} onQuestionAnswered={handleLiveQuestion} onPlayingChange={(isPlaying) => { playingRef.current = isPlaying; }} />
+          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={[watchLanguage]} readingLevel={profile.readingLevel || "letters"} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
+          <SafePlayerView key={`${current.id}-${watchLanguage}`} video={current} language={watchLanguage} onEnded={handleEnded} liveQuestions={learning?.questions} onQuestionAnswered={handleLiveQuestion} onPlayingChange={(isPlaying) => { playingRef.current = isPlaying; }} />
           <SlipNote video={current} ageGroup={profile.ageGroup} />
           {phase === "softpause" && <SoftPauseScreen line={softPauseLine} onNext={() => setPhase("intermission")} />}
           {phase === "intermission" && <IntermissionScreen ageGroup={profile.ageGroup} endQuestion={learning?.endQuestion} onEndQuestion={handleEndQuestion} onComplete={handleIntermission} />}

@@ -77,6 +77,14 @@ export default async function handler(req, res) {
       const details = await ytFetch("/videos", { part: "snippet,contentDetails,statistics", id: ids.join(",") }, apiKey);
       return ok(res, { videos: (details.items || []).map(toVideo) });
     }
+    if (payload.action === "videoById") {
+      const id = typeof payload.videoId === "string" ? payload.videoId.trim() : "";
+      if (!/^[\w-]{11}$/.test(id)) return fail(res, "videoId is required.", "INVALID_INPUT");
+      const details = await ytFetch("/videos", { part: "snippet,contentDetails,statistics", id }, apiKey);
+      const item = details.items?.[0];
+      if (!item) return fail(res, "Video not found.", "NOT_FOUND", 404);
+      return ok(res, { video: toVideo(item) });
+    }
     if (payload.action === "channelStats") {
       const channelId = typeof payload.channelId === "string" ? payload.channelId.trim() : "";
       const data = await ytFetch("/channels", { part: "statistics", id: channelId }, apiKey);

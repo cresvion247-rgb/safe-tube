@@ -18,6 +18,9 @@ const EXTRA = {
   "curator.videoAdded": "Saved “{title}” for this age.",
   "curator.videoBad": "Paste a YouTube video link.",
   "ageGroup.teen_13_16": "Teen (13–16)",
+  "watch.allCategories": "All",
+  "category.faith": "Faith & Values",
+  "category.faith.islam": "Islam",
 };
 
 const isSupported = (code) => UI_LANGUAGES.some((language) => language.code === code);

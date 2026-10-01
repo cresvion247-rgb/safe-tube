@@ -5,8 +5,8 @@ import { safeQuery } from "@/domain/safety";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function loadCategoryVideos(ageGroup, label) {
-  const term = safeQuery(`${label} for kids`);
+export async function loadCategoryVideos(ageGroup, label, categoryId) {
+  const term = safeQuery(label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`);
   if (!term) return [];
   await sleep(1500);
   const found = await searchVideos({ term, languageCode: "en", maxResults: 4 });
@@ -18,7 +18,8 @@ export async function loadCategoryVideos(ageGroup, label) {
     description: video.description,
     channelId: video.channelId,
     channelTitle: video.channelTitle,
-    category: label,
+    category: "Emotional_Intelligence",
+    categoryId,
     ageGroup,
     language: "en",
     durationSeconds: video.durationSeconds,

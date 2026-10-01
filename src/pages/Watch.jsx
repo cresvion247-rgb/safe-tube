@@ -28,6 +28,7 @@ import IntermissionScreen from "@/components/IntermissionScreen";
 import ScreenTimeLock from "@/components/ScreenTimeLock";
 import TokenBadge from "@/components/TokenBadge";
 import VocabularyPanel from "@/components/watch/VocabularyPanel";
+import WatchFolderBar from "@/components/watch/WatchFolderBar";
 import { getVideoLearning } from "@/app/learning";
 
 const INFO_SCREENS = {
@@ -89,20 +90,42 @@ export default function Watch() {
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  // Video length label, always at least "1 min".
   const durationLabel = (video) =>
     t("watch.duration", { minutes: Math.max(1, Math.round((video.durationSeconds ?? 0) / 60)) });
 
   const [profile, setProfile] = useState(null);
+  const [libraryVideos, setLibraryVideos] = useState([]);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
-  const [phase, setPhase] = useState("loading"); // loading | nokey | empty | error | ready | softpause | intermission | timelock | done
+  const [phase, setPhase] = useState("loading");
   const [softPauseLine, setSoftPauseLine] = useState("");
   const [learning, setLearning] = useState(null);
 
   const playingRef = useRef(false);
   const sessionRef = useRef(null);
   const secondsRef = useRef(0);
+  const profileRef = useRef(null);
+
+  const buildFrom = async (loaded, videos) => {
+    const watchedIds = new Set(await getWatchedVideoIds(profileId));
+    let candidates = videos.filter((v) => !watchedIds.has(v.id));
+    if (!candidates.length) {
+      await clearWatchedHistory(profileId);
+      candidates = videos;
+    }
+    if (!candidates.length) {
+      setQueue([]);
+      setPhase("empty");
+      return;
+    }
+    const { queue: built } = makeQueue(candidates, loaded.educationalTokens, loaded.comprehensionScore, loaded.ageGroup);
+    setQueue(built);
+    setQueueIndex(0);
+    if (built[0]?.category === ENTERTAINMENT_CATEGORY) {
+      await spendTokens(built[0], entertainmentCostFor(loaded.ageGroup), loaded);
+    }
+    setPhase(secondsRef.current >= (loaded.dailyTimeLimitMinutes ?? 60) * 60 ? "timelock" : "ready");
+  };
 
   useEffect(() => {
     let alive = true;
@@ -114,32 +137,19 @@ export default function Watch() {
         return;
       }
       setProfile(loaded);
+      profileRef.current = loaded;
       const session = await getTodaySession(profileId);
       sessionRef.current = session;
       secondsRef.current = session.secondsToday ?? 0;
       try {
         const { videos } = await loadFeed(loaded);
         if (!alive) return;
+        setLibraryVideos(videos);
         if (!videos.length) {
           setPhase("empty");
           return;
         }
-        // Never repeat a watched video across sessions; recycle the oldest-watched
-        // ones (resetting history) only when everything has already been seen.
-        const watchedIds = new Set(await getWatchedVideoIds(profileId));
-        let candidates = videos.filter((v) => !watchedIds.has(v.id));
-        if (!candidates.length) {
-          await clearWatchedHistory(profileId);
-          candidates = videos;
-        }
-        const { queue: built } = makeQueue(candidates, loaded.educationalTokens, loaded.comprehensionScore, loaded.ageGroup);
-        setQueue(built);
-        setQueueIndex(0);
-        if (built[0]?.category === ENTERTAINMENT_CATEGORY) {
-          await spendTokens(built[0], entertainmentCostFor(loaded.ageGroup), loaded);
-        }
-        if (!alive) return;
-        setPhase(secondsRef.current >= (loaded.dailyTimeLimitMinutes ?? 60) * 60 ? "timelock" : "ready");
+        await buildFrom(loaded, videos);
       } catch (error) {
         if (!alive) return;
         setPhase(error instanceof YoutubeApiError && error.code === "MISSING_API_KEY" ? "nokey" : "error");
@@ -154,6 +164,7 @@ export default function Watch() {
   const updateProfile = (changes) => {
     setProfile((current) => {
       const next = { ...current, ...changes };
+      profileRef.current = next;
       saveProfile(next);
       return next;
     });
@@ -175,7 +186,6 @@ export default function Watch() {
     if (correct) awardTokens(TOKEN_RULES.PER_INTERMISSION);
   };
 
-  // Parent lifted the daily lock: reset today's counter and resume watching.
   const handleParentUnlock = () => {
     secondsRef.current = 0;
     sessionRef.current = { ...sessionRef.current, secondsToday: 0 };
@@ -184,7 +194,6 @@ export default function Watch() {
     setPhase("ready");
   };
 
-  // Daily screen-time accrual while the video actually plays.
   useEffect(() => {
     if (phase !== "ready" || !profile) return undefined;
     let unsaved = 0;
@@ -208,7 +217,6 @@ export default function Watch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, profile?.dailyTimeLimitMinutes]);
 
-  // Fetch (or load cached) vocabulary + pop-up questions for the current video.
   useEffect(() => {
     if (phase !== "ready") return undefined;
     const video = queue[queueIndex];
@@ -258,7 +266,6 @@ export default function Watch() {
     setPhase("ready");
   };
 
-  // Child skips the current video: no token earned, straight to the next in the queue.
   const handleSkip = () => {
     if (queue[queueIndex]) recordWatchedVideo(profileId, queue[queueIndex].id);
     const nextIndex = queueIndex + 1;
@@ -305,6 +312,7 @@ export default function Watch() {
 
   const current = queue[queueIndex];
   const upNext = queue.slice(queueIndex + 1, queueIndex + 4);
+  if (!current) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -337,7 +345,17 @@ export default function Watch() {
       </header>
 
       <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_280px]">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-4">
+          <WatchFolderBar
+            videos={libraryVideos}
+            t={t}
+            onFilter={(filtered) => {
+              const currentId = queue[queueIndex]?.id;
+              if (filtered.some((v) => v.id === currentId)) return;
+              const loaded = profileRef.current;
+              if (loaded) buildFrom(loaded, filtered);
+            }}
+          />
           <SafePlayerView
             key={current.id}
             video={current}
@@ -398,7 +416,6 @@ export default function Watch() {
           )}
         </div>
 
-        {/* Desktop side panel: token tracking + queue preview */}
         <aside className="hidden flex-col gap-4 rounded-3xl border border-border bg-card p-5 lg:flex">
           <div className="flex items-center gap-3">
             <Coins className="h-6 w-6 shrink-0 text-primary" />

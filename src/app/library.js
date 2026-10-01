@@ -2,6 +2,8 @@ import { ALL_AGE_GROUPS, ENTERTAINMENT_CATEGORY } from "@/domain/constants";
 import { applyWhitelistGates } from "@/domain/gates";
 import { whitelistForAge } from "@/data/whitelist";
 import { activeRegistryForAge, confirmedChannelsForAge } from "@/app/vetting";
+import { ensureCategoryMigration } from "@/app/categories";
+import { idToLegacyCategory } from "@/domain/categories";
 import {
   getCached,
   putCached,
@@ -35,12 +37,12 @@ export async function defaultTrustedChannels() {
     for (const channel of await activeRegistryForAge(group)) {
       if (seen.has(channel.name)) continue;
       seen.add(channel.name);
-      out.push({ ...channel, ageGroup: group, isDefaultTrusted: true, source: "registry" });
+      out.push({ ...channel, ageGroup: group, isDefaultTrusted: true, source: "registry", nativeLanguage: channel.nativeLanguage || "en" });
     }
     for (const channel of whitelistForAge(group)) {
       if (seen.has(channel.name)) continue;
       seen.add(channel.name);
-      out.push({ ...channel, isDefaultTrusted: true, source: "whitelist" });
+      out.push({ ...channel, isDefaultTrusted: true, source: "whitelist", nativeLanguage: channel.nativeLanguage || "en" });
     }
   }
   return out;
@@ -49,17 +51,21 @@ export async function defaultTrustedChannels() {
 async function parentChannels() {
   const out = [];
   const custom = (await listCustomChannels()).filter((c) => c.status === "approved");
-  custom.forEach((c) =>
+  custom.forEach((c) => {
+    const legacy = c.categories?.length
+      ? c.categories
+      : [idToLegacyCategory(c.primaryCategoryId) || ENTERTAINMENT_CATEGORY];
     out.push({
       name: c.name,
       channelId: c.channelId || null,
       ageGroup: c.ageGroup,
-      categories: c.categories?.length ? c.categories : [ENTERTAINMENT_CATEGORY],
+      categories: legacy,
+      primaryCategoryId: c.primaryCategoryId || null,
       nativeLanguage: c.nativeLanguage || "en",
       isDefaultTrusted: false,
       source: "parent",
-    })
-  );
+    });
+  });
   for (const group of ALL_AGE_GROUPS) {
     for (const c of await confirmedChannelsForAge(group)) {
       if (out.some((x) => x.channelId === c.channelId)) continue;
@@ -128,6 +134,7 @@ async function scanChannel(channel, channelId) {
         channelId: v.channelId,
         channelTitle: v.channelTitle || channel.name,
         category: categories[0],
+        categoryId: channel.primaryCategoryId || null,
         ageGroup: channel.ageGroup,
         language: (v.language || channel.nativeLanguage || "en").slice(0, 2).toLowerCase(),
         durationSeconds: v.durationSeconds,
@@ -197,6 +204,7 @@ function continueImportInBackground(sources) {
 }
 
 export async function ensureLibraryVideos(profile) {
+  await ensureCategoryMigration();
   const existing = await libraryVideosForAge(profile.ageGroup);
   const sources = await allSources(profile.ageGroup);
   const sameAge = sources.filter((s) => s.ageGroup === profile.ageGroup);
@@ -233,12 +241,15 @@ export async function importApprovedDiscovery(ageGroup) {
 }
 
 export async function getLibraryVideosForProfile(profile) {
-  const [primary = "en", ...secondary] = profile.targetLanguages || [];
+  const allowed = new Set(
+    ["en", profile.nativeLanguage, ...(profile.targetLanguages || [])]
+      .filter(Boolean)
+      .map((code) => String(code).slice(0, 2).toLowerCase())
+  );
   const stored = (await libraryVideosForAge(profile.ageGroup)).filter((v) => v.approved !== false);
-  return stored.map(({ approved, addedAt, sourceChannelId, ageGroup, ...video }) => {
-    const language = (video.language || primary).slice(0, 2).toLowerCase();
-    return secondary.includes(language) ? { ...video, category: ENTERTAINMENT_CATEGORY } : video;
-  });
+  return stored
+    .filter((video) => allowed.has((video.language || "en").slice(0, 2).toLowerCase()))
+    .map(({ approved, addedAt, sourceChannelId, ageGroup, ...video }) => video);
 }
 
 export async function refreshLibrary({ manual = false } = {}) {
@@ -249,11 +260,13 @@ export async function refreshLibrary({ manual = false } = {}) {
   }
 
   const trusted = await defaultTrustedChannels();
+  const extras = await parentChannels();
   const targets = [];
   for (const group of ALL_AGE_GROUPS) {
     const have = await libraryVideosForAge(group);
     if (have.length > 0) continue;
     targets.push(...trusted.filter((s) => s.ageGroup === group).slice(0, REFRESH_NEW_CHANNELS));
+    targets.push(...extras.filter((s) => s.ageGroup === group).slice(0, REFRESH_NEW_CHANNELS));
   }
 
   let added = 0;

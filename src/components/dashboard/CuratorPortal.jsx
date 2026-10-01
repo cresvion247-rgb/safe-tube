@@ -1,13 +1,18 @@
 // Custom Curator Portal: parents paste YouTube channel URLs/IDs to expand the
-// age-group feed, and review channels that passed runtime vetting. Verified
-// registry channels feed automatically; vetted newcomers wait for one tap here.
+// age-group feed, pick a category folder (including faith branches), and set language.
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
-import { ALL_AGE_GROUPS, CATEGORIES } from "@/domain/constants";
+import { ALL_AGE_GROUPS, LANGUAGES, CATEGORIES } from "@/domain/constants";
 import { useI18n } from "@/lib/i18n";
-import { listCustomChannels, saveCustomChannel, deleteCustomChannel, uid } from "@/adapters/localDb";
+import { listCustomChannels, deleteCustomChannel } from "@/adapters/localDb";
 import { resolveChannels, YoutubeApiError } from "@/adapters/youtubeClient";
+import { loadCategoryTree } from "@/app/categories";
+import { addParentChannel } from "@/app/channelPacks";
+import { legacyCategoryToId, idToLegacyCategory } from "@/domain/categories";
 import VerifiedChannelsPanel from "@/components/dashboard/VerifiedChannelsPanel";
+import CategoryTreeManager from "@/components/dashboard/CategoryTreeManager";
+import ChannelPackPanel from "@/components/dashboard/ChannelPackPanel";
+import CategoryPicker, { categoryPathLabel } from "@/components/dashboard/CategoryPicker";
 
 const parseChannelInput = (input) => {
   const value = input.trim();
@@ -22,13 +27,16 @@ export default function CuratorPortal() {
   const { t } = useI18n();
   const [ageGroup, setAgeGroup] = useState(ALL_AGE_GROUPS[0]);
   const [channelInput, setChannelInput] = useState("");
-  const [channelCategory, setChannelCategory] = useState(CATEGORIES.STEM);
-  const [channelNotice, setChannelNotice] = useState(null); // { type: "error"|"ok", key, params? }
+  const [tree, setTree] = useState([]);
+  const [categoryId, setCategoryId] = useState(legacyCategoryToId(CATEGORIES.STEM));
+  const [language, setLanguage] = useState("en");
+  const [channelNotice, setChannelNotice] = useState(null);
   const [adding, setAdding] = useState(false);
   const [channels, setChannels] = useState([]);
 
   const refresh = async () => {
     setChannels(await listCustomChannels());
+    setTree(await loadCategoryTree());
   };
 
   useEffect(() => {
@@ -56,16 +64,20 @@ export default function CuratorPortal() {
         setChannelNotice({ type: "error", key: "curator.errorNotFound" });
         return;
       }
-      await saveCustomChannel({
-        id: uid(),
-        channelId,
-        name,
-        ageGroup,
-        categories: [channelCategory],
-        nativeLanguage: "en",
-        addedBy: "parent",
-        status: "approved",
-      });
+      const legacy = idToLegacyCategory(categoryId);
+      await addParentChannel(
+        { ageGroup, nativeLanguage: language },
+        {
+          name,
+          channelId,
+          ageGroup,
+          language,
+          primaryCategoryId: categoryId,
+          categoryIds: [categoryId],
+          categories: legacy ? [legacy] : [],
+          status: "approved",
+        }
+      );
       setChannelInput("");
       setChannelNotice({ type: "ok", key: "curator.added", params: { name } });
       await refresh();
@@ -101,29 +113,34 @@ export default function CuratorPortal() {
             </button>
           ))}
         </div>
-        <form onSubmit={addChannel} className="flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={addChannel} className="flex flex-col gap-3">
           <input
             value={channelInput}
             onChange={(e) => setChannelInput(e.target.value)}
             placeholder={t("curator.placeholder")}
-            className="h-12 flex-1 rounded-xl border border-input bg-background px-4"
+            className="h-12 w-full rounded-xl border border-input bg-background px-4"
           />
-          <select
-            value={channelCategory}
-            onChange={(e) => setChannelCategory(e.target.value)}
-            className="h-12 rounded-xl border border-input bg-background px-3 text-sm"
-          >
-            {Object.values(CATEGORIES).map((category) => (
-              <option key={category} value={category}>{t(`category.${category}`)}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            disabled={adding}
-            className="flex h-12 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />} {t("curator.add")}
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <CategoryPicker tree={tree} value={categoryId} onChange={setCategoryId} t={t} />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="h-12 rounded-xl border border-input bg-background px-3 text-sm"
+            >
+              {LANGUAGES.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.nativeName}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={adding}
+              className="flex h-12 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {adding ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />} {t("curator.add")}
+            </button>
+          </div>
         </form>
         {channelNotice && (
           <p className={`text-sm font-medium ${channelNotice.type === "error" ? "text-destructive" : "text-primary"}`}>
@@ -138,7 +155,13 @@ export default function CuratorPortal() {
                   <p className="break-words font-semibold">{channel.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {t(`ageGroup.${channel.ageGroup}`)}
-                    {channel.categories[0] ? ` · ${t(`category.${channel.categories[0]}`)}` : ""}
+                    {" · "}
+                    {(channel.nativeLanguage || "en").toUpperCase()}
+                    {channel.primaryCategoryId
+                      ? ` · ${categoryPathLabel(tree, channel.primaryCategoryId, t)}`
+                      : channel.categories?.[0]
+                        ? ` · ${t(`category.${channel.categories[0]}`)}`
+                        : ""}
                   </p>
                 </div>
                 <button
@@ -155,6 +178,8 @@ export default function CuratorPortal() {
         )}
       </section>
 
+      <ChannelPackPanel t={t} />
+      <CategoryTreeManager t={t} />
       <VerifiedChannelsPanel ageGroup={ageGroup} />
     </div>
   );

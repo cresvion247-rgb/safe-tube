@@ -37,3 +37,8 @@ export async function channelStats(channelId) {
   const data = await invoke({ action: "channelStats", channelId });
   return data.stats;
 }
+
+export async function fetchVideo(videoId) {
+  const data = await invoke({ action: "videoById", videoId });
+  return data.video;
+}

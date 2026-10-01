@@ -10,12 +10,21 @@ import {
 } from "@/domain/constants";
 import { useI18n } from "@/lib/i18n";
 import { saveProfile, uid } from "@/adapters/localDb";
+import { READING_LEVELS, readingLevelForAge } from "@/content/packs/muslimKids";
+
+const LEVEL_LABELS = {
+  letters: "Letters",
+  qaida: "Qaida",
+  reading: "Reading",
+  tajweed: "Tajweed",
+};
 
 export default function ProfileEditor({ profile, onSaved, onCancel }) {
   const { t } = useI18n();
   const [form, setForm] = useState(() => ({
     childName: profile?.childName ?? "",
     ageGroup: profile?.ageGroup ?? ALL_AGE_GROUPS[0],
+    readingLevel: profile?.readingLevel ?? readingLevelForAge(profile?.ageGroup ?? ALL_AGE_GROUPS[0]),
     targetLanguages: profile?.targetLanguages ?? ["en"],
     dailyTimeLimitMinutes: profile?.dailyTimeLimitMinutes ?? DEFAULT_DAILY_LIMIT_MINUTES,
   }));
@@ -26,6 +35,7 @@ export default function ProfileEditor({ profile, onSaved, onCancel }) {
     setForm({
       childName: profile?.childName ?? "",
       ageGroup: profile?.ageGroup ?? ALL_AGE_GROUPS[0],
+      readingLevel: profile?.readingLevel ?? readingLevelForAge(profile?.ageGroup ?? ALL_AGE_GROUPS[0]),
       targetLanguages: profile?.targetLanguages ?? ["en"],
       dailyTimeLimitMinutes: profile?.dailyTimeLimitMinutes ?? DEFAULT_DAILY_LIMIT_MINUTES,
       parentPin: profile?.parentPin ?? "",
@@ -55,6 +65,7 @@ export default function ProfileEditor({ profile, onSaved, onCancel }) {
         id: profile?.id ?? uid(),
         childName: form.childName.trim(),
         ageGroup: form.ageGroup,
+        readingLevel: form.readingLevel,
         targetLanguages: form.targetLanguages,
         dailyTimeLimitMinutes: form.dailyTimeLimitMinutes,
         currentTimeSpent: profile?.currentTimeSpent ?? 0,
@@ -93,17 +104,36 @@ export default function ProfileEditor({ profile, onSaved, onCancel }) {
 
       <div className="space-y-2">
         <span className="font-heading font-semibold">{t("editor.ageGroup")}</span>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {ALL_AGE_GROUPS.map((group) => (
             <button
               key={group}
               type="button"
-              onClick={() => setForm({ ...form, ageGroup: group })}
+              onClick={() => setForm({ ...form, ageGroup: group, readingLevel: form.readingLevel || readingLevelForAge(group) })}
               className={`h-14 rounded-xl border-2 text-sm font-bold ${
                 form.ageGroup === group ? "border-primary bg-primary/10 text-primary" : "border-border bg-card"
               }`}
             >
               {t(`ageGroup.${group}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <span className="font-heading font-semibold">Quran reading level</span>
+        <p className="text-xs text-muted-foreground">Set this to where the child actually is. An older child can still be on letters or Qaida.</p>
+        <div className="grid gap-3 sm:grid-cols-4">
+          {READING_LEVELS.map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => setForm({ ...form, readingLevel: level })}
+              className={`h-12 rounded-xl border-2 text-sm font-bold ${
+                form.readingLevel === level ? "border-primary bg-primary/10 text-primary" : "border-border bg-card"
+              }`}
+            >
+              {LEVEL_LABELS[level]}
             </button>
           ))}
         </div>

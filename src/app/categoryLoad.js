@@ -4,46 +4,38 @@ import { putLibraryVideos } from "@/adapters/localDb";
 import { safeQuery } from "@/domain/safety";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const HINT = { es: "en español", fr: "en français", de: "auf Deutsch", zh: "中文", ar: "بالعربية", hi: "हिंदी", pt: "em português", ja: "日本語", ru: "на русском", it: "in italiano", ko: "한국어", tr: "Türkçe", eu: "euskara", id: "bahasa Indonesia", pl: "po polsku", ur: "اردو سبق" };
-const SCRIPT = { ur: /[پٹچڈڑژگےں]|اردو/, ar: /[؀-ۿ]/, hi: /[ऀ-ॿ]/, zh: /[一-鿿]/, ja: /[぀-ヿ]/, ko: /[가-힯]/, ru: /[Ѐ-ӿ]/ };
-
-export function matchesLanguage(video, language) {
-  const code = String(language || "en").slice(0, 2).toLowerCase();
-  const text = `${video.title || ""} ${video.description || ""}`;
-  const latin = (text.match(/[A-Za-z]/g) || []).length;
-  if (code === "en") return latin > 12;
-  const mark = SCRIPT[code];
-  if (mark) return mark.test(text) && latin < 80;
-  return text.toLowerCase().includes(code) && latin < 40;
-}
+const HINT = { es: "en español", fr: "en français", de: "auf Deutsch", zh: "中文", ar: "بالعربية", hi: "हिंदी", pt: "em português", ja: "日本語", ru: "на русском", it: "in italiano", ko: "한국어", tr: "Türkçe", eu: "euskara", id: "bahasa Indonesia", pl: "po polsku", ur: "اردو" };
 
 export async function loadCategoryVideos(ageGroup, label, categoryId, languages = ["en"], query) {
-  const faith = /faith|islam|quran|iqra|qaida|tajweed/i.test(`${label} ${query || ""}`);
-  const base = query || (faith ? "Quran lessons for kids" : `${label} for kids`);
-  const language = String((languages[0] || "en")).slice(0, 2).toLowerCase();
-  const term = safeQuery(language === "en" ? `${base} in English` : `${base} ${HINT[language] || language}`);
-  if (!term) return [];
-  await sleep(1500);
-  const found = await searchVideos({ term, languageCode: language, maxResults: 8 });
-  const gated = applyWhitelistGates(found, ageGroup).filter((video) => matchesLanguage(video, language)).slice(0, 2);
-  const now = new Date().toISOString();
-  const videos = gated.map((video) => ({
-    id: video.id,
-    title: video.title,
-    description: video.description,
-    channelId: video.channelId,
-    channelTitle: video.channelTitle,
-    category: faith ? "Literacy_Language" : "Emotional_Intelligence",
-    categoryId,
-    ageGroup,
-    language,
-    durationSeconds: video.durationSeconds,
-    viewCount: video.viewCount,
-    thumbnail: video.thumbnail,
-    approved: true,
-    addedAt: now,
-    sourceChannelId: video.channelId,
-  }));
-  if (videos.length) await putLibraryVideos(videos);
-  return videos;
+  const base = query || (label.includes("Faith") || label.includes("Islam") ? "Quran stories for kids" : `${label} for kids`);
+  const codes = [...new Set((languages.length ? languages : ["en"]).map((code) => String(code).slice(0, 2).toLowerCase()))];
+  const saved = [];
+  for (const language of codes) {
+    const term = safeQuery(query || (language === "en" ? base : `${base} ${HINT[language] || language}`));
+    if (!term) continue;
+    await sleep(1500);
+    const found = await searchVideos({ term, languageCode: language, maxResults: 4 });
+    const gated = applyWhitelistGates(found, ageGroup).slice(0, 2);
+    const now = new Date().toISOString();
+    const videos = gated.map((video) => ({
+      id: video.id,
+      title: video.title,
+      description: video.description,
+      channelId: video.channelId,
+      channelTitle: video.channelTitle,
+      category: "Literacy_Language",
+      categoryId,
+      ageGroup,
+      language,
+      durationSeconds: video.durationSeconds,
+      viewCount: video.viewCount,
+      thumbnail: video.thumbnail,
+      approved: true,
+      addedAt: now,
+      sourceChannelId: video.channelId,
+    }));
+    if (videos.length) await putLibraryVideos(videos);
+    saved.push(...videos);
+  }
+  return saved;
 }

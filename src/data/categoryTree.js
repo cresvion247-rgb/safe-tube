@@ -83,21 +83,6 @@ export function systemCategoryTree() {
     node("cat_islam_shia_zaydi", "cat_islam_shia", "Zaydi", "category.faith.islam.shia.zaydi", { faith: true, sortOrder: 30 }),
     node("cat_islam_shia_other", "cat_islam_shia", "Other_Shia", "category.faith.islam.shia.other", { faith: true, sortOrder: 40 }),
     node("cat_islam_other", "cat_islam", "Other_Islam", "category.faith.islam.other", { faith: true, sortOrder: 30 }),
-    node("cat_christianity", FAITH_ROOT_ID, "Christianity", "category.faith.christianity", { faith: true, sortOrder: 20 }),
-    node("cat_christianity_catholic", "cat_christianity", "Catholic", "category.faith.christianity.catholic", { faith: true, sortOrder: 10 }),
-    node("cat_christianity_orthodox", "cat_christianity", "Orthodox", "category.faith.christianity.orthodox", { faith: true, sortOrder: 20 }),
-    node("cat_christianity_protestant", "cat_christianity", "Protestant", "category.faith.christianity.protestant", { faith: true, sortOrder: 30 }),
-    node("cat_christianity_other", "cat_christianity", "Other_Christian", "category.faith.christianity.other", { faith: true, sortOrder: 40 }),
-    node("cat_judaism", FAITH_ROOT_ID, "Judaism", "category.faith.judaism", { faith: true, sortOrder: 30 }),
-    node("cat_judaism_orthodox", "cat_judaism", "Orthodox", "category.faith.judaism.orthodox", { faith: true, sortOrder: 10 }),
-    node("cat_judaism_conservative", "cat_judaism", "Conservative", "category.faith.judaism.conservative", { faith: true, sortOrder: 20 }),
-    node("cat_judaism_reform", "cat_judaism", "Reform", "category.faith.judaism.reform", { faith: true, sortOrder: 30 }),
-    node("cat_judaism_other", "cat_judaism", "Other_Jewish", "category.faith.judaism.other", { faith: true, sortOrder: 40 }),
-    node("cat_hinduism", FAITH_ROOT_ID, "Hinduism", "category.faith.hinduism", { faith: true, sortOrder: 40 }),
-    node("cat_buddhism", FAITH_ROOT_ID, "Buddhism", "category.faith.buddhism", { faith: true, sortOrder: 50 }),
-    node("cat_sikhism", FAITH_ROOT_ID, "Sikhism", "category.faith.sikhism", { faith: true, sortOrder: 60 }),
-    node("cat_other_faiths", FAITH_ROOT_ID, "Other_Faiths", "category.faith.other", { faith: true, sortOrder: 70 }),
-    node("cat_values_character", FAITH_ROOT_ID, "Values_Character", "category.faith.values", { faith: true, sortOrder: 80 }),
   ];
 
   return [...subjects, ...faith];

@@ -7,7 +7,7 @@ import { IQRA_LEVELS, iqraQuery } from "@/content/packs/iqra";
 
 const IQRA = "cat_iqra";
 
-export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], instructionLanguage, readingLevel = "letters", onFilter, t }) {
+export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], instructionLanguage, onLanguage, readingLevel = "letters", onFilter, t }) {
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
   const [selectedId, setSelectedId] = useState(null);
   const [extra, setExtra] = useState([]);
@@ -54,13 +54,19 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], i
     }
   };
 
+  const changeLanguage = (code) => {
+    setInstruction(code);
+    onLanguage?.(code);
+    select(selectedId || IQRA, readingLevel, code);
+  };
+
   return (
     <div className="space-y-2">
       <CategoryBrowse tree={tree} selectedId={selectedId} onSelect={select} t={t} />
       {iqraOpen && (
         <label className="flex items-center text-sm text-muted-foreground">
           Instruction
-          <select value={instruction} onChange={(event) => { setInstruction(event.target.value); select(selectedId || IQRA, readingLevel, event.target.value); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
+          <select value={instruction} onChange={(event) => changeLanguage(event.target.value)} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
             {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
           </select>
         </label>

@@ -7,14 +7,19 @@ import { IQRA_LEVELS, iqraQuery } from "@/content/packs/iqra";
 
 const IQRA = "cat_iqra";
 
-export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], readingLevel = "letters", onFilter, t }) {
+export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], instructionLanguage, readingLevel = "letters", onFilter, t }) {
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
   const [selectedId, setSelectedId] = useState(null);
   const [extra, setExtra] = useState([]);
   const [notice, setNotice] = useState("Videos for this category will load over time in each selected language.");
-  const [instruction, setInstruction] = useState(languages[0] || "en");
+  const [instruction, setInstruction] = useState(instructionLanguage || languages[0] || "en");
   const group = ageGroup || videos[0]?.ageGroup;
   const iqraOpen = selectedId === IQRA || selectedId?.startsWith("cat_iqra_");
+  const choices = [...new Set(languages.map((code) => String(code).slice(0, 2).toLowerCase()))];
+
+  useEffect(() => {
+    if (instructionLanguage) setInstruction(instructionLanguage);
+  }, [instructionLanguage]);
 
   useEffect(() => {
     const filtered = videosInCategory([...videos, ...extra], tree, selectedId);
@@ -35,7 +40,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
         group,
         legacy || node?.slug || "Learning",
         id,
-        iqra ? [language] : languages,
+        iqra ? [language] : [language],
         iqra ? iqraQuery(IQRA_LEVELS.some((item) => item.id === step) ? step : level, group, language) : undefined,
       );
       if (loaded.length) {
@@ -58,7 +63,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
           <label className="text-sm text-muted-foreground">
             Instruction
             <select value={instruction} onChange={(event) => { setInstruction(event.target.value); select(selectedId || IQRA, readingLevel, event.target.value); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
-              {languages.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
+              {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
             </select>
           </label>
         </div>

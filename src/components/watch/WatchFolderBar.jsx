@@ -54,18 +54,13 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
   return (
     <div className="space-y-2">
       <CategoryBrowse tree={tree} selectedId={selectedId} onSelect={select} t={t} />
-      <label className="flex items-center text-sm text-muted-foreground">
-        Language
-        <select value={instruction} onChange={(event) => { const code = event.target.value; setInstruction(code); if (selectedId) select(selectedId, readingLevel, code); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
-          {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
-        </select>
-      </label>
       {iqraOpen && (
-        <div className="flex flex-wrap items-center gap-2">
-          {IQRA_LEVELS.map((level) => (
-            <button key={level.id} type="button" onClick={() => select(`cat_iqra_${level.id}`, level.id)} className="h-10 rounded-full border border-border bg-card px-4 text-sm font-semibold">{level.label}</button>
-          ))}
-        </div>
+        <label className="flex items-center text-sm text-muted-foreground">
+          Instruction
+          <select value={instruction} onChange={(event) => { const code = event.target.value; setInstruction(code); select(selectedId || IQRA, readingLevel, code); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
+            {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
+          </select>
+        </label>
       )}
       <p className="text-sm text-muted-foreground">{notice}</p>
     </div>

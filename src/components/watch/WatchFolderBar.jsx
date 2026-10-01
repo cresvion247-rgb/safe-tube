@@ -4,7 +4,7 @@ import { idToLegacyCategory } from "@/domain/categories";
 import CategoryBrowse, { videosInCategory } from "@/components/CategoryBrowse";
 import { loadCategoryVideos } from "@/app/categoryLoad";
 
-export default function WatchFolderBar({ videos, onFilter, t }) {
+export default function WatchFolderBar({ videos, languages = ["en"], onFilter, t }) {
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
   const [selectedId, setSelectedId] = useState(null);
   const [extra, setExtra] = useState([]);
@@ -26,17 +26,18 @@ export default function WatchFolderBar({ videos, onFilter, t }) {
     const node = tree.find((item) => item.id === id);
     const legacy = idToLegacyCategory(id);
     const already = videosInCategory([...videos, ...extra], tree, id);
-    if (already.length >= 2) {
+    const wanted = Math.max(languages.length, 1) * 2;
+    if (already.length >= wanted) {
       setNotice("");
       return;
     }
-    setNotice("Videos for this category will load over time.");
+    setNotice("Videos for this category will load over time in each selected language.");
     try {
-      const loaded = await loadCategoryVideos(ageGroup, legacy || node?.slug || "Learning", id);
+      const loaded = await loadCategoryVideos(ageGroup, legacy || node?.slug || "Learning", id, languages);
       if (loaded.length) setExtra((current) => [...current, ...loaded]);
-      setNotice(loaded.length ? "A few videos are ready. More can load later." : "Videos for this category will load over time.");
+      setNotice(loaded.length ? "A few videos are ready. More can load later." : "Videos for this category will load over time in each selected language.");
     } catch {
-      setNotice("Videos for this category will load over time.");
+      setNotice("Videos for this category will load over time in each selected language.");
     }
   };
 

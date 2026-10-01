@@ -25,6 +25,7 @@ export const MAX_DURATION_SECONDS = {
 };
 
 export const CATEGORIES = {
+  IQRA: "IQRA",
   STEM: "STEM",
   ARTS: "Arts",
   EMOTIONAL_INTELLIGENCE: "Emotional_Intelligence",
@@ -46,6 +47,7 @@ export const CATEGORIES = {
 };
 
 export const EDUCATIONAL_CATEGORIES = [
+  CATEGORIES.IQRA,
   CATEGORIES.STEM,
   CATEGORIES.ARTS,
   CATEGORIES.EMOTIONAL_INTELLIGENCE,

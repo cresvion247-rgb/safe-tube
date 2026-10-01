@@ -12,6 +12,7 @@ import { legacyCategoryToId, idToLegacyCategory } from "@/domain/categories";
 import VerifiedChannelsPanel from "@/components/dashboard/VerifiedChannelsPanel";
 import CategoryTreeManager from "@/components/dashboard/CategoryTreeManager";
 import ChannelPackPanel from "@/components/dashboard/ChannelPackPanel";
+import MuslimKidsPanel from "@/components/dashboard/MuslimKidsPanel";
 import CategoryPicker, { categoryPathLabel } from "@/components/dashboard/CategoryPicker";
 
 const parseChannelInput = (input) => {
@@ -96,6 +97,7 @@ export default function CuratorPortal() {
 
   return (
     <div className="space-y-10">
+      <MuslimKidsPanel t={t} ageGroup={ageGroup} onChanged={refresh} />
       <section className="space-y-4 rounded-3xl border border-border bg-card p-6">
         <h2 className="font-heading text-xl font-bold">{t("curator.addTitle")}</h2>
         <p className="text-sm text-muted-foreground">{t("curator.addText")}</p>

@@ -36,6 +36,7 @@ export const LEGACY_CATEGORY_TO_ID = {
   [CATEGORIES.AI]: "cat_ai",
   [CATEGORIES.FILM_MAKING]: "cat_film_making",
   [CATEGORIES.DIGITAL_SKILLS]: "cat_digital_skills",
+  [CATEGORIES.IQRA]: "cat_iqra",
   [CATEGORIES.COOKING_FOOD]: "cat_cooking_food",
   [CATEGORIES.SPORTS_GAMES]: "cat_sports_games",
   [CATEGORIES.ENVIRONMENTAL_AWARENESS]: "cat_environmental_awareness",
@@ -48,6 +49,11 @@ export const ID_TO_LEGACY_CATEGORY = Object.fromEntries(
 
 export function systemCategoryTree() {
   const subjects = [
+    subject(CATEGORIES.IQRA, "category.IQRA", 4),
+    node("cat_iqra_letters", "cat_iqra", "Letters", "category.iqra.letters", { sortOrder: 10 }),
+    node("cat_iqra_qaida", "cat_iqra", "Qaida", "category.iqra.qaida", { sortOrder: 20 }),
+    node("cat_iqra_reading", "cat_iqra", "Reading", "category.iqra.reading", { sortOrder: 30 }),
+    node("cat_iqra_tajweed", "cat_iqra", "Tajweed", "category.iqra.tajweed", { sortOrder: 40 }),
     subject(CATEGORIES.STEM, "category.STEM", 10),
     subject(CATEGORIES.ARTS, "category.Arts", 20),
     subject(CATEGORIES.EMOTIONAL_INTELLIGENCE, "category.Emotional_Intelligence", 30),

@@ -29,7 +29,6 @@ export const LEGACY_CATEGORY_TO_ID = {
   [CATEGORIES.NATURE_ANIMALS]: "cat_nature_animals",
   [CATEGORIES.LIFE_SKILLS]: "cat_life_skills",
   [CATEGORIES.HEALTH_MOVEMENT]: "cat_health_movement",
-  [CATEGORIES.MUSIC_DANCE]: "cat_music_dance",
   [CATEGORIES.WORLD_CULTURES]: "cat_world_cultures",
   [CATEGORIES.HISTORY]: "cat_history",
   [CATEGORIES.GEOGRAPHY]: "cat_geography",
@@ -53,7 +52,6 @@ export function systemCategoryTree() {
     subject(CATEGORIES.NATURE_ANIMALS, "category.Nature_Animals", 50),
     subject(CATEGORIES.LIFE_SKILLS, "category.Life_Skills", 60),
     subject(CATEGORIES.HEALTH_MOVEMENT, "category.Health_Movement", 70),
-    subject(CATEGORIES.MUSIC_DANCE, "category.Music_Dance", 80),
     subject(CATEGORIES.HISTORY, "category.History", 90),
     subject(CATEGORIES.GEOGRAPHY, "category.Geography", 100),
     subject(CATEGORIES.CODING_TECHNOLOGY, "category.Coding_Technology", 110),
@@ -65,11 +63,7 @@ export function systemCategoryTree() {
   ];
 
   const faith = [
-    node(FAITH_ROOT_ID, null, "Faith_Values", "category.faith", {
-      facet: "faith",
-      tokenBucket: "educational",
-      sortOrder: 5,
-    }),
+    node(FAITH_ROOT_ID, null, "Faith_Values", "category.faith", { facet: "faith", tokenBucket: "educational", sortOrder: 5 }),
     node("cat_islam", FAITH_ROOT_ID, "Islam", "category.faith.islam", { faith: true, sortOrder: 10 }),
     node("cat_islam_sunni", "cat_islam", "Sunni", "category.faith.islam.sunni", { faith: true, sortOrder: 10 }),
     node("cat_islam_sunni_hanafi", "cat_islam_sunni", "Hanafi", "category.faith.islam.sunni.hanafi", { faith: true, sortOrder: 10 }),

@@ -10,7 +10,6 @@ const TOPICS = [
   { category: CATEGORIES.LITERACY_LANGUAGE, label: "Reading", ages: all, q: "reading for kids" },
   { category: CATEGORIES.NATURE_ANIMALS, label: "Animals", ages: all, q: "animals for kids" },
   { category: CATEGORIES.LIFE_SKILLS, label: "Life skills", ages: all, q: "life skills for kids" },
-  { category: CATEGORIES.MUSIC_DANCE, label: "Music", ages: all, q: "songs for kids" },
   { category: CATEGORIES.WORLD_CULTURES, label: "Cultures", ages: all, q: "world cultures for kids" },
   { category: CATEGORIES.HISTORY, label: "History", ages: older, q: "history for kids" },
   { category: CATEGORIES.GEOGRAPHY, label: "Geography", ages: older, q: "geography for kids" },
@@ -42,7 +41,7 @@ export function topicSuggestions(languages, ageGroup) {
 
 export function exerciseSuggestions(ageGroup) {
   const rows = [
-    { name: "Move and play", query: "kids exercise dance", ages: [AGE_GROUPS.TODDLER, AGE_GROUPS.EARLY_LEARNER], kind: "exercise" },
+    { name: "Move and play", query: "kids exercise play", ages: [AGE_GROUPS.TODDLER, AGE_GROUPS.EARLY_LEARNER], kind: "exercise" },
     { name: "Kids workout", query: "kids workout at home", ages: [AGE_GROUPS.EARLY_LEARNER, AGE_GROUPS.TWEEN], kind: "exercise" },
     { name: "Teen fitness", query: "teen home workout no equipment", ages: [AGE_GROUPS.TWEEN, AGE_GROUPS.TEEN], kind: "exercise" },
     { name: "Body safety", query: "body safety for kids", ages: [AGE_GROUPS.EARLY_LEARNER, AGE_GROUPS.TWEEN], kind: "defense" },

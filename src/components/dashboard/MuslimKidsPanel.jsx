@@ -57,7 +57,7 @@ export default function MuslimKidsPanel({ t, onChanged }) {
 
   const profile = profiles.find((item) => item.id === profileId) ?? profiles[0] ?? null;
   const ageGroup = profile?.ageGroup;
-  const suggestions = ageGroup ? suggestionsForAge(ageGroup, addedNames, 3) : [];
+  const suggestions = ageGroup ? suggestionsForAge(ageGroup, addedNames, 5) : [];
 
   const refresh = async () => {
     const [nextProfiles, channels] = await Promise.all([listProfiles(), listCustomChannels()]);
@@ -160,7 +160,7 @@ export default function MuslimKidsPanel({ t, onChanged }) {
     <section className="space-y-6 rounded-3xl border border-border bg-card p-6">
       <div>
         <h2 className="font-heading text-xl font-bold">{t("curator.muslimTitle")}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Suggestions follow the selected child's age. Adding one brings the next suggestion. Your own channel or video can still be pasted below.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Five suggestions for the selected child's age. Adding one replaces it with the next. Your own channel or video can still be pasted below.</p>
       </div>
       {profiles.length > 0 && (
         <div className="flex flex-wrap gap-2">

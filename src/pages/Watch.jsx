@@ -211,7 +211,19 @@ export default function Watch() {
   };
 
   if (phase === "timelock" && profile) return <ScreenTimeLock returnTo={`/watch/${profileId}`} onParentUnlock={handleParentUnlock} />;
-  if (["loading", "nokey", "empty", "error", "done"].includes(phase)) {
+  if (phase === "empty" && profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="mx-auto flex max-w-5xl items-center justify-between p-4 sm:p-6">
+          <Link to="/" className="flex h-12 items-center gap-2 rounded-full border border-border bg-card px-4 font-medium hover:bg-accent"><ArrowLeft className="h-5 w-5" /> {t("common.profiles")}</Link>
+        </header>
+        <main className="mx-auto max-w-5xl space-y-4 px-4">
+          <WatchFolderBar videos={[]} ageGroup={profile.ageGroup} languages={profile.targetLanguages || ["en"]} t={t} onFilter={(filtered) => { if (filtered.length) buildFrom(profile, filtered); }} />
+        </main>
+      </div>
+    );
+  }
+  if (["loading", "nokey", "error", "done"].includes(phase)) {
     return (
       <div className="min-h-screen bg-background">
         <header className="mx-auto flex max-w-5xl items-center justify-between p-4 sm:p-6">
@@ -243,7 +255,7 @@ export default function Watch() {
       </header>
       <main className="mx-auto grid max-w-6xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0 space-y-4">
-          <WatchFolderBar videos={libraryVideos} languages={profile.targetLanguages || ["en"]} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
+          <WatchFolderBar videos={libraryVideos} ageGroup={profile.ageGroup} languages={profile.targetLanguages || ["en"]} t={t} onFilter={(filtered) => { const currentId = queue[queueIndex]?.id; if (filtered.some((v) => v.id === currentId)) return; const loaded = profileRef.current; if (loaded) buildFrom(loaded, filtered); }} />
           <SafePlayerView key={current.id} video={current} language={(profile.targetLanguages || ["en"])[0]} onEnded={handleEnded} liveQuestions={learning?.questions} onQuestionAnswered={handleLiveQuestion} onPlayingChange={(isPlaying) => { playingRef.current = isPlaying; }} />
           {phase === "softpause" && <SoftPauseScreen line={softPauseLine} onNext={() => setPhase("intermission")} />}
           {phase === "intermission" && <IntermissionScreen ageGroup={profile.ageGroup} endQuestion={learning?.endQuestion} onEndQuestion={handleEndQuestion} onComplete={handleIntermission} />}

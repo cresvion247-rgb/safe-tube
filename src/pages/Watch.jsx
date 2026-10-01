@@ -22,6 +22,7 @@ import {
   clearWatchedHistory,
 } from "@/adapters/localDb";
 import { loadFeed, makeQueue, YoutubeApiError } from "@/app/feed";
+import { recordPreference } from "@/app/preferences";
 import SafePlayerView from "@/components/SafePlayerView";
 import SoftPauseScreen from "@/components/SoftPauseScreen";
 import IntermissionScreen from "@/components/IntermissionScreen";
@@ -234,7 +235,10 @@ export default function Watch() {
 
   const handleEnded = () => {
     const current = queue[queueIndex];
-    if (current) recordWatchedVideo(profileId, current.id);
+    if (current) {
+      recordWatchedVideo(profileId, current.id);
+      recordPreference(profileId, current, "play");
+    }
     if (current && EDUCATIONAL_CATEGORIES.includes(current.category)) {
       awardTokens(TOKEN_RULES.PER_EDUCATIONAL_VIDEO);
     }
@@ -267,7 +271,10 @@ export default function Watch() {
   };
 
   const handleSkip = () => {
-    if (queue[queueIndex]) recordWatchedVideo(profileId, queue[queueIndex].id);
+    if (queue[queueIndex]) {
+      recordWatchedVideo(profileId, queue[queueIndex].id);
+      recordPreference(profileId, queue[queueIndex], "skip");
+    }
     const nextIndex = queueIndex + 1;
     if (nextIndex >= queue.length) {
       setPhase("done");

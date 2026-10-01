@@ -4,7 +4,20 @@
 import { DICTIONARIES, UI_LANGUAGES, RTL_UI_LANGUAGES, DEFAULT_UI_LANGUAGE } from "@/i18n";
 
 const STORAGE_KEY = "safetube_kids_language";
-const LEGACY_STORAGE_KEY = "safetube_lang_pref"; // pre-i18n key — migrated on first read
+const LEGACY_STORAGE_KEY = "safetube_lang_pref";
+
+const EXTRA = {
+  "curator.muslimTitle": "Muslim kids channels",
+  "curator.muslimText": "Tap Add to allow a trusted kids channel for this age. It is filed under Islam and stays on this device.",
+  "curator.muslimAdded": "{name} is on the feed for this age.",
+  "curator.muslimAlready": "{name} is already added.",
+  "curator.videoTitle": "Add one video",
+  "curator.videoText": "Paste a YouTube video link. It is saved for this age under Islam. Optionally allow the whole channel too.",
+  "curator.videoPlaceholder": "youtube.com/watch?v=… or youtu.be/…",
+  "curator.videoAlsoChannel": "Also allow this channel",
+  "curator.videoAdded": "Saved “{title}” for this age.",
+  "curator.videoBad": "Paste a YouTube video link.",
+};
 
 const isSupported = (code) => UI_LANGUAGES.some((language) => language.code === code);
 
@@ -21,15 +34,12 @@ const persist = (code) => {
     localStorage.setItem(STORAGE_KEY, code);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    /* storage unavailable — the in-memory preference still applies */
+    /* storage unavailable */
   }
 };
 
-// First launch with no saved preference: follow the device language when it is
-// supported, otherwise fall back to English.
 const detectDeviceLanguage = () => {
-  const candidates =
-    typeof navigator !== "undefined" ? navigator.languages ?? [navigator.language] : [];
+  const candidates = typeof navigator !== "undefined" ? navigator.languages ?? [navigator.language] : [];
   for (const tag of candidates) {
     const base = String(tag).toLowerCase().split("-")[0];
     if (isSupported(base)) return base;
@@ -52,7 +62,7 @@ const listeners = new Set();
 const initial = resolveInitialLanguage();
 let current = initial.code;
 applyToDocument(current);
-if (!initial.persisted) persist(current); // remember the detected choice across refreshes
+if (!initial.persisted) persist(current);
 
 export const getUiLanguage = () => current;
 
@@ -61,8 +71,6 @@ export const subscribeUiLanguage = (listener) => {
   return () => listeners.delete(listener);
 };
 
-// The one entry point for switching language. Idempotent: picking the same
-// language twice is a safe no-op, and switching never reloads the page.
 export function applyAppLanguage(code) {
   const next = isSupported(code) ? code : DEFAULT_UI_LANGUAGE;
   if (next === current) {
@@ -75,15 +83,10 @@ export function applyAppLanguage(code) {
   listeners.forEach((listener) => listener());
 }
 
-// Current-preference snapshot, kept for the backup adapter.
 export const getStoredLanguage = () => current;
 
-// Translate a key with the active dictionary; English is the fallback, and a
-// key missing everywhere renders the key itself (never undefined).
 export function translate(code, key, params) {
-  const text = DICTIONARIES[code]?.[key] ?? DICTIONARIES.en[key] ?? key;
+  const text = DICTIONARIES[code]?.[key] ?? DICTIONARIES.en[key] ?? EXTRA[key] ?? key;
   if (!params) return text;
-  return text.replace(/\{(\w+)\}/g, (match, name) =>
-    params[name] == null ? "" : String(params[name])
-  );
+  return text.replace(/\{(\w+)\}/g, (match, name) => (params[name] == null ? "" : String(params[name])));
 }

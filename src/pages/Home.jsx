@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import ProfileCard from "@/components/profiles/ProfileCard";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import BottomNav from "@/components/BottomNav";
+import BrandLink from "@/components/BrandLink";
 
 export default function Home() {
   const { t } = useI18n();
@@ -27,12 +28,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background pt-safe">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 p-4 sm:p-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground">
-              <Tv className="h-6 w-6" />
-            </div>
-            <h1 className="truncate font-display text-xl font-bold min-[400px]:text-2xl">{t("brand.name")}</h1>
-          </div>
+          <BrandLink />
           <div className="flex shrink-0 items-center gap-2">
             <LanguageSwitcher />
             <Link

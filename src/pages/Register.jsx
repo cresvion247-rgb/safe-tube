@@ -11,6 +11,8 @@ import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
 
+const siteReturn = () => `${window.location.origin}${safeReturnTo()}`;
+
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,7 +31,11 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: siteReturn() },
+      });
       if (error) throw error;
       if (data.session) {
         window.location.href = safeReturnTo();
@@ -60,7 +66,7 @@ export default function Register() {
   const handleResend = async () => {
     setError("");
     try {
-      const { error } = await supabase.auth.resend({ type: "signup", email });
+      const { error } = await supabase.auth.resend({ type: "signup", email, options: { emailRedirectTo: siteReturn() } });
       if (error) throw error;
       toast({ title: "Code sent", description: "Check your email for the new code." });
     } catch (err) {
@@ -71,7 +77,7 @@ export default function Register() {
   const handleGoogle = () => {
     supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}${safeReturnTo()}` },
+      options: { redirectTo: siteReturn() },
     });
   };
 

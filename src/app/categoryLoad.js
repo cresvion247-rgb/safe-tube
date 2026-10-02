@@ -10,7 +10,8 @@ const KEEP = 8;
 function keepLessons(found, ageGroup) {
   const gated = applyWhitelistGates(found, ageGroup);
   const pool = gated.length ? gated : found.filter((video) => passesKeywordBlocker(video) && video.durationSeconds > 0 && video.durationSeconds <= 1800);
-  return pool.slice(0, KEEP);
+  const matched = pool.filter((video) => !video.languageFallback);
+  return (matched.length ? matched : pool).slice(0, KEEP);
 }
 
 function toRows(found, ageGroup, language, categoryId, faith) {
@@ -24,7 +25,8 @@ function toRows(found, ageGroup, language, categoryId, faith) {
     category: faith ? "Literacy_Language" : "Emotional_Intelligence",
     categoryId,
     ageGroup,
-    language,
+    language: video.languageFallback ? "en" : language,
+    languageFallback: !!video.languageFallback,
     durationSeconds: video.durationSeconds,
     viewCount: video.viewCount,
     thumbnail: video.thumbnail,
@@ -44,7 +46,7 @@ export async function loadCategoryVideos(ageGroup, label, categoryId, languages 
     const hint = language === "en" ? "" : ` ${HINT[language] || language}`;
     const terms = [safeQuery(`${base}${hint}`), safeQuery(`${base} lesson${hint}`)].filter(Boolean);
     for (const term of terms) {
-      if (saved.length >= KEEP) break;
+      if (saved.filter((video) => !video.languageFallback).length >= KEEP) break;
       await sleep(800);
       const found = await searchVideos({ term, languageCode: language, maxResults: 12 });
       const rows = toRows(found, ageGroup, language, categoryId, faith).filter((video) => !seen.has(video.id));
@@ -53,5 +55,6 @@ export async function loadCategoryVideos(ageGroup, label, categoryId, languages 
       saved.push(...rows);
     }
   }
-  return saved.slice(0, KEEP);
+  const matched = saved.filter((video) => !video.languageFallback);
+  return (matched.length ? matched : saved).slice(0, KEEP);
 }

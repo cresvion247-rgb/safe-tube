@@ -89,9 +89,10 @@ export default async function handler(req, res) {
       if (!ids.length) return ok(res, { videos: [] });
       const details = await ytFetch("/videos", { part: "snippet,contentDetails,statistics", id: ids.join(",") }, apiKey);
       const videos = (details.items || []).map(toVideo);
+      if (languageCode === "en") return ok(res, { videos });
       const audio = (video) => String(video.language || "").slice(0, 2).toLowerCase();
       const matched = videos.filter((video) => audio(video) === languageCode);
-      if (languageCode === "en" || matched.length) return ok(res, { videos: matched.length ? matched : videos });
+      if (matched.length) return ok(res, { videos: matched });
       const fallback = videos.filter((video) => !audio(video) || audio(video) === "en").map((video) => ({ ...video, languageFallback: true }));
       return ok(res, { videos: fallback });
     }

@@ -47,8 +47,8 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
       language: instruction,
       onVideos: (rows) => {
         setExtra((current) => unique([...current, ...rows]));
+        setSuggestions((current) => unique([...rows, ...current]).slice(0, 8));
         setNotice("New videos are arriving slowly.");
-        onFilter(rows);
       },
     });
   }, [group, instruction]);

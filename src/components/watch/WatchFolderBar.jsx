@@ -22,6 +22,12 @@ function shuffleFresh(videos, seen) {
 function unique(videos) {
   return videos.filter((video, index, list) => list.findIndex((item) => item.id === video.id) === index);
 }
+function forLanguage(videos, language) {
+  if (!language || language === "en") return videos;
+  const matched = videos.filter((video) => (video.language || "en") === language && !video.languageFallback);
+  if (matched.length) return matched;
+  return videos.filter((video) => video.languageFallback || (video.language || "en") === "en");
+}
 
 export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], readingLevel = "letters", onFilter, t }) {
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
@@ -36,8 +42,9 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
 
   const remember = (categoryId, language, list) => {
     localStorage.setItem(memoryKey(group), JSON.stringify({ categoryId, language }));
-    setSuggestions(list.slice(0, 8));
-    if (list.length) onFilter(list);
+    const scoped = forLanguage(list, language);
+    setSuggestions(scoped.slice(0, 8));
+    if (scoped.length) onFilter(scoped);
   };
 
   useEffect(() => {
@@ -46,18 +53,19 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
       ageGroup: group,
       language: instruction,
       onVideos: (rows) => {
+        const scoped = forLanguage(videosInCategory(rows, tree, selectedId), instruction);
         setExtra((current) => unique([...current, ...rows]));
-        setSuggestions((current) => unique([...rows, ...current]).slice(0, 8));
+        if (scoped.length) setSuggestions((current) => unique([...scoped, ...current]).slice(0, 8));
         setNotice("New videos are arriving slowly.");
       },
     });
-  }, [group, instruction]);
+  }, [group, instruction, selectedId, tree]);
 
   useEffect(() => {
-    const filtered = videosInCategory([...videos, ...extra], tree, selectedId);
+    const filtered = forLanguage(videosInCategory([...videos, ...extra], tree, selectedId), instruction);
     if (!filtered.length) return;
     setSuggestions(shuffleFresh(filtered, readJson(seenKey(group), [])).slice(0, 8));
-  }, [selectedId, videos, tree, extra, group]);
+  }, [selectedId, videos, tree, extra, group, instruction]);
 
   const select = async (id, level = readingLevel, language = instruction) => {
     setSelectedId(id);
@@ -68,7 +76,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
     const step = id?.replace("cat_iqra_", "") || level;
     localStorage.setItem(memoryKey(group), JSON.stringify({ categoryId: id, language }));
     setNotice(`${language.toUpperCase()} videos will load over time.`);
-    const existing = shuffleFresh(videosInCategory([...videos, ...extra], tree, id), readJson(seenKey(group), []));
+    const existing = shuffleFresh(forLanguage(videosInCategory([...videos, ...extra], tree, id), language), readJson(seenKey(group), []));
     if (existing.length) remember(id, language, existing);
     try {
       const targets = id ? [node].filter(Boolean) : tree.filter((item) => !item.parentId && !item.hidden).slice(0, 4);
@@ -80,11 +88,11 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
         loaded = unique([...loaded, ...batch]);
       }
       if (!targets.length && id) loaded = await loadCategoryVideos(group, legacy || "Learning", id, [language], iqra ? iqraQuery(step, group, language) : undefined);
-      const merged = shuffleFresh(unique([...existing, ...loaded]), readJson(seenKey(group), []));
+      const merged = shuffleFresh(forLanguage(unique([...existing, ...loaded]), language), readJson(seenKey(group), []));
       if (loaded.length) setExtra((current) => unique([...current, ...loaded]));
       if (merged.length) {
         remember(id, language, merged);
-        setNotice(`${merged.length} ${language.toUpperCase()} videos are ready. More will arrive over time.`);
+        setNotice(`${merged.length} ${language.toUpperCase()} videos are ready for this category.`);
       }
     } catch {
       setNotice(`${language.toUpperCase()} videos will load over time.`);

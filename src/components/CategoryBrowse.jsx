@@ -1,19 +1,10 @@
 import { getChildren, getAncestors, getDescendantIds } from "@/domain/categories";
 import { categoryLabel } from "@/components/dashboard/CategoryPicker";
-import { idToLegacyCategory } from "@/domain/categories";
 
 export function videosInCategory(videos, tree, categoryId) {
   if (!categoryId) return videos;
   const ids = new Set(getDescendantIds(tree, categoryId));
-  const legacy = new Set(
-    [...ids].map(idToLegacyCategory).filter(Boolean)
-  );
-  return videos.filter(
-    (video) =>
-      ids.has(video.categoryId) ||
-      legacy.has(video.category) ||
-      (video.categoryIds || []).some((id) => ids.has(id))
-  );
+  return videos.filter((video) => ids.has(video.categoryId) || (video.categoryIds || []).some((id) => ids.has(id)));
 }
 
 export default function CategoryBrowse({ tree, selectedId, onSelect, t }) {

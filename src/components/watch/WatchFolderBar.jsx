@@ -98,33 +98,26 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-      <div className="space-y-2">
-        <CategoryBrowse tree={tree} selectedId={selectedId} onSelect={select} t={t} />
-        {iqraOpen && (
-          <label className="flex items-center text-sm text-muted-foreground">
-            Instruction
-            <select value={instruction} onChange={(event) => { const code = event.target.value; setInstruction(code); select(selectedId || IQRA, readingLevel, code); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
-              {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
-            </select>
-          </label>
-        )}
-        <p className="text-sm text-muted-foreground">{notice}</p>
-      </div>
-      <aside className="rounded-3xl border border-border bg-card p-4">
-        <p className="mb-2 text-sm font-semibold text-muted-foreground">Suggested</p>
-        {suggestions.length === 0 ? <p className="text-sm text-muted-foreground">Suggestions appear as videos load.</p> : (
-          <ul className="space-y-2">
-            {suggestions.map((video) => (
-              <li key={video.id}>
-                <button type="button" onClick={() => chooseSuggestion(video)} className="w-full rounded-xl bg-accent p-3 text-left text-sm hover:bg-accent/80">
-                  <p className="line-clamp-2 font-medium">{video.title}</p>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
+    <div className="space-y-2">
+      <CategoryBrowse tree={tree} selectedId={selectedId} onSelect={select} t={t} />
+      {iqraOpen && (
+        <label className="flex items-center text-sm text-muted-foreground">
+          Instruction
+          <select value={instruction} onChange={(event) => { const code = event.target.value; setInstruction(code); select(selectedId || IQRA, readingLevel, code); }} className="ml-2 h-10 rounded-full border border-border bg-card px-3">
+            {choices.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}
+          </select>
+        </label>
+      )}
+      <p className="text-sm text-muted-foreground">{notice}</p>
+      {suggestions.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {suggestions.map((video) => (
+            <button key={video.id} type="button" onClick={() => chooseSuggestion(video)} className="h-16 w-44 shrink-0 rounded-xl bg-accent px-3 text-left text-xs font-medium hover:bg-accent/80">
+              <span className="line-clamp-2">{video.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

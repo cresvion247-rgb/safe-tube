@@ -18,6 +18,9 @@ function shuffleFresh(videos, seen) {
   const mix = (list) => [...list].sort(() => Math.random() - 0.5);
   return [...mix(fresh), ...mix(repeated)];
 }
+function unique(videos) {
+  return videos.filter((video, index, list) => list.findIndex((item) => item.id === video.id) === index);
+}
 
 export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], readingLevel = "letters", onFilter, t }) {
   const [tree] = useState(() => systemCategoryTree().filter((node) => !node.hidden));
@@ -39,8 +42,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
   useEffect(() => {
     const filtered = videosInCategory([...videos, ...extra], tree, selectedId);
     if (!filtered.length) return;
-    const ordered = shuffleFresh(filtered, readJson(seenKey(group), []));
-    setSuggestions(ordered.slice(0, 8));
+    setSuggestions(shuffleFresh(filtered, readJson(seenKey(group), [])).slice(0, 8));
   }, [selectedId, videos, tree, extra, group]);
 
   const select = async (id, level = readingLevel, language = instruction) => {
@@ -54,17 +56,26 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
     setNotice(`${language.toUpperCase()} videos will load over time.`);
     const existing = shuffleFresh(videosInCategory([...videos, ...extra], tree, id), readJson(seenKey(group), []));
     if (existing.length) remember(id, language, existing);
-    if (!id) return;
     try {
-      const loaded = await loadCategoryVideos(
-        group,
-        legacy || node?.slug || "Learning",
-        id,
-        [language],
-        iqra ? iqraQuery(IQRA_LEVELS.some((item) => item.id === step) ? step : level, group, language) : undefined,
-      );
-      const merged = shuffleFresh([...existing, ...loaded].filter((video, index, list) => list.findIndex((item) => item.id === video.id) === index), readJson(seenKey(group), []));
-      if (loaded.length) setExtra((current) => [...current, ...loaded]);
+      const targets = id ? [node].filter(Boolean) : tree.filter((item) => !item.parentId && !item.hidden).slice(0, 4);
+      let loaded = [];
+      for (const target of targets) {
+        const targetId = target.id;
+        const targetIqra = targetId === IQRA || targetId.startsWith("cat_iqra_");
+        const batch = await loadCategoryVideos(
+          group,
+          idToLegacyCategory(targetId) || target.slug || "Learning",
+          targetId,
+          [language],
+          targetIqra ? iqraQuery(step, group, language) : undefined,
+        );
+        loaded = unique([...loaded, ...batch]);
+      }
+      if (!targets.length && id) {
+        loaded = await loadCategoryVideos(group, legacy || "Learning", id, [language], iqra ? iqraQuery(step, group, language) : undefined);
+      }
+      const merged = shuffleFresh(unique([...existing, ...loaded]), readJson(seenKey(group), []));
+      if (loaded.length) setExtra((current) => unique([...current, ...loaded]));
       if (merged.length) {
         remember(id, language, merged);
         setNotice(`${merged.length} ${language.toUpperCase()} videos are ready.`);
@@ -77,8 +88,7 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
   const chooseSuggestion = (video) => {
     const seen = readJson(seenKey(group), []).filter((id) => id !== video.id);
     localStorage.setItem(seenKey(group), JSON.stringify([video.id, ...seen].slice(0, 40)));
-    const rest = suggestions.filter((item) => item.id !== video.id);
-    remember(selectedId, instruction, [video, ...rest]);
+    remember(selectedId, instruction, [video, ...suggestions.filter((item) => item.id !== video.id)]);
   };
 
   return (

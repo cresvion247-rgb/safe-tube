@@ -5,7 +5,6 @@ import CategoryBrowse, { videosInCategory } from "@/components/CategoryBrowse";
 import { loadCategoryVideos } from "@/app/categoryLoad";
 import { startSlowInflow } from "@/app/inflow";
 import { IQRA_LEVELS, iqraQuery } from "@/content/packs/iqra";
-import VideoChoices from "@/components/watch/VideoChoices";
 
 const IQRA = "cat_iqra";
 const memoryKey = (ageGroup) => `safe-tube-choice:${ageGroup || "all"}`;
@@ -110,7 +109,16 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
         </label>
       )}
       <p className="text-sm text-muted-foreground">{notice}</p>
-      <VideoChoices videos={suggestions} onChoose={chooseSuggestion} label="Choose a video" />
+      {suggestions.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {suggestions.map((video) => (
+            <button key={video.id} type="button" onClick={() => chooseSuggestion(video)} className="w-44 shrink-0 rounded-xl bg-accent p-2 text-left hover:bg-accent/80">
+              <img src={video.thumbnail || ""} alt="" className="mb-1 h-24 w-full rounded-lg bg-muted object-cover" />
+              <span className="line-clamp-2 text-xs font-medium">{video.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

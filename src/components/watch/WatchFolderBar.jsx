@@ -3,6 +3,7 @@ import { systemCategoryTree } from "@/data/categoryTree";
 import { idToLegacyCategory } from "@/domain/categories";
 import CategoryBrowse, { videosInCategory } from "@/components/CategoryBrowse";
 import { loadCategoryVideos } from "@/app/categoryLoad";
+import { startSlowInflow } from "@/app/inflow";
 import { IQRA_LEVELS, iqraQuery } from "@/content/packs/iqra";
 
 const IQRA = "cat_iqra";
@@ -40,6 +41,19 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
   };
 
   useEffect(() => {
+    if (!group) return undefined;
+    return startSlowInflow({
+      ageGroup: group,
+      language: instruction,
+      onVideos: (rows) => {
+        setExtra((current) => unique([...current, ...rows]));
+        setNotice("New videos are arriving slowly.");
+        onFilter(rows);
+      },
+    });
+  }, [group, instruction]);
+
+  useEffect(() => {
     const filtered = videosInCategory([...videos, ...extra], tree, selectedId);
     if (!filtered.length) return;
     setSuggestions(shuffleFresh(filtered, readJson(seenKey(group), [])).slice(0, 8));
@@ -62,23 +76,15 @@ export default function WatchFolderBar({ videos, ageGroup, languages = ["en"], r
       for (const target of targets) {
         const targetId = target.id;
         const targetIqra = targetId === IQRA || targetId.startsWith("cat_iqra_");
-        const batch = await loadCategoryVideos(
-          group,
-          idToLegacyCategory(targetId) || target.slug || "Learning",
-          targetId,
-          [language],
-          targetIqra ? iqraQuery(step, group, language) : undefined,
-        );
+        const batch = await loadCategoryVideos(group, idToLegacyCategory(targetId) || target.slug || "Learning", targetId, [language], targetIqra ? iqraQuery(step, group, language) : undefined);
         loaded = unique([...loaded, ...batch]);
       }
-      if (!targets.length && id) {
-        loaded = await loadCategoryVideos(group, legacy || "Learning", id, [language], iqra ? iqraQuery(step, group, language) : undefined);
-      }
+      if (!targets.length && id) loaded = await loadCategoryVideos(group, legacy || "Learning", id, [language], iqra ? iqraQuery(step, group, language) : undefined);
       const merged = shuffleFresh(unique([...existing, ...loaded]), readJson(seenKey(group), []));
       if (loaded.length) setExtra((current) => unique([...current, ...loaded]));
       if (merged.length) {
         remember(id, language, merged);
-        setNotice(`${merged.length} ${language.toUpperCase()} videos are ready.`);
+        setNotice(`${merged.length} ${language.toUpperCase()} videos are ready. More will arrive over time.`);
       }
     } catch {
       setNotice(`${language.toUpperCase()} videos will load over time.`);
